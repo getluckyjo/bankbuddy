@@ -587,6 +587,7 @@ dialog::backdrop{background:rgba(10,14,20,.45)}
     '- rows: ONLY money going out that is (d) a debit order: debit orders, DebiCheck, NAEDO/AEDO, EFT debits collected by a company, insurance premiums, loan, rental or contract collections; or (s) a card or online charge to a subscription or membership service: streaming, music, apps, software, cloud storage, memberships, gyms.',
     '- Leave out everything else: payments the account holder made to people or suppliers, transfers, cash, ordinary card purchases at shops or restaurants, bank fees, money coming in.',
     '- Each row: [date "YYYY-MM-DD", amount in rands as a NEGATIVE number, "d" or "s", the company’s plain name as a person would say it (e.g. "Discovery Life", "Netflix") without reference numbers, the statement text as printed (max 40 characters)].',
+    '- Some statements show the same transaction twice, for example once in the transaction list and again in a card, category or summary section, or once as "Netflix" and again as "Recurring Card Purchase: Netflix". List each real transaction ONCE, taken from the main transaction list. Only list a charge twice if the main list really shows it twice (a genuine double charge).',
     '- fees_total: the total of bank fees and charges on this statement as a positive number (0 if none).',
     '- Balances in rands, negative if overdrawn, null if not shown. Dates use the statement’s own years. Do not invent anything.'
   ].join('\n');
@@ -636,6 +637,7 @@ dialog::backdrop{background:rgba(10,14,20,.45)}
         merchant: String(x[3] || x[4] || '').slice(0, 80), description: String(x[4] || x[3] || '').slice(0, 80)
       };
     }).filter(t => t.date && t.amount !== null && t.amount !== 0);
+    const unique = dedupeWithin(txs);
     const last4 = String(r.account_last4 || '').replace(/\D/g, '').slice(-4);
     return {
       isStatement: r.is_bank_statement !== false,
@@ -647,7 +649,7 @@ dialog::backdrop{background:rgba(10,14,20,.45)}
       openingBalance: num(r.opening_balance),
       closingBalance: num(r.closing_balance),
       feesTotal: num(r.fees_total),
-      transactions: txs,
+      transactions: unique,
       label: label || ''
     };
   }
@@ -917,6 +919,25 @@ dialog::backdrop{background:rgba(10,14,20,.45)}
   }
 
   /* ---------------- analysis ---------------- */
+  // One statement can print the same charge twice in different wording (e.g.
+  // "Netflix" in the transaction list and "Recurring Card Purchase: Netflix…"
+  // in a card section). Same date, amount and company with DIFFERENT text is
+  // one charge; identical text twice is kept, since that is how a real double
+  // charge shows up.
+  function dedupeWithin(txs) {
+    const seen = new Map();
+    const out = [];
+    for (const t of txs) {
+      const k = t.date + '|' + t.amount + '|' + norm(t.merchant).slice(0, 60);
+      const texts = seen.get(k);
+      const d = norm(t.description);
+      if (texts && !texts.includes(d)) continue;
+      if (texts) texts.push(d); else seen.set(k, [d]);
+      out.push(t);
+    }
+    return out;
+  }
+
   // Statements can overlap (a monthly statement and a stamped one for the same
   // weeks). Per account, each date is taken from the first statement that
   // covers it, so an overlap never looks like a double charge.
@@ -940,7 +961,7 @@ dialog::backdrop{background:rgba(10,14,20,.45)}
       });
       const covered = [];
       for (const s of sts) {
-        for (const t of (s.transactions || [])) {
+        for (const t of dedupeWithin(s.transactions || [])) {
           if (covered.some(r => t.date >= r[0] && t.date <= r[1])) continue;
           out.push(Object.assign({}, t, { bank: s.bank, last4: s.accountLast4, accountName: s.accountName }));
         }
