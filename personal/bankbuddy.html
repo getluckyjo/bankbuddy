@@ -1,0 +1,1330 @@
+<title>BankBuddy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..900&family=IBM+Plex+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600;700&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+<style>
+:root{
+  --paper:#EEF1EE; --surface:#FFFFFF; --surface-2:#F6F8F6;
+  --ink:#141820; --muted:#4F5863; --line:#D2D8D3; --line-strong:#AEB7B0;
+  --blue:#2340A8; --blue-ink:#1A3185; --blue-tint:#E2E7F8;
+  --stamp:#B8401A; --stamp-tint:#FBE6DC;
+  --green:#1B6A45; --green-tint:#DCEFE3;
+  --amber:#8A5A00; --amber-tint:#FBEFD2;
+  --shadow:0 1px 0 rgba(20,24,32,.04), 0 18px 36px -26px rgba(20,24,32,.45);
+  --display:"Archivo","Arial Narrow",Arial,sans-serif;
+  --body:"Public Sans","Segoe UI",system-ui,-apple-system,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0E1216; --surface:#161B21; --surface-2:#1B2129;
+    --ink:#E7EBEE; --muted:#A2ACB6; --line:#29313A; --line-strong:#3C4652;
+    --blue:#93A9FF; --blue-ink:#B7C6FF; --blue-tint:#1C2546;
+    --stamp:#FF9366; --stamp-tint:#3A1D12;
+    --green:#74D3A0; --green-tint:#14301F;
+    --amber:#F2C35B; --amber-tint:#33280E;
+    --shadow:0 1px 0 rgba(0,0,0,.3), 0 18px 36px -24px rgba(0,0,0,.8);
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0E1216; --surface:#161B21; --surface-2:#1B2129;
+  --ink:#E7EBEE; --muted:#A2ACB6; --line:#29313A; --line-strong:#3C4652;
+  --blue:#93A9FF; --blue-ink:#B7C6FF; --blue-tint:#1C2546;
+  --stamp:#FF9366; --stamp-tint:#3A1D12;
+  --green:#74D3A0; --green-tint:#14301F;
+  --amber:#F2C35B; --amber-tint:#33280E;
+  --shadow:0 1px 0 rgba(0,0,0,.3), 0 18px 36px -24px rgba(0,0,0,.8);
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:15.5px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1120px;margin:0 auto;padding-inline:18px}
+h1,h2,h3{font-family:var(--display);margin:0;letter-spacing:-.01em;text-wrap:balance}
+h2{font-size:22px;font-weight:800;font-stretch:110%}
+h3{font-size:16.5px;font-weight:700;font-stretch:104%}
+p{margin:0}
+a{color:var(--blue)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--blue);outline-offset:2px;border-radius:6px}
+.mono{font-family:var(--mono)}
+.num{font-variant-numeric:tabular-nums;font-family:var(--mono)}
+.muted{color:var(--muted)}
+.small{font-size:13.5px}
+.eyebrow{font-family:var(--mono);font-size:12px;font-weight:500;letter-spacing:.09em;text-transform:uppercase;color:var(--muted)}
+
+/* top bar */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;gap:12px;padding-block:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px;font-family:var(--display);font-weight:800;font-stretch:112%;font-size:19px;margin-right:auto}
+.mark{width:30px;height:30px;border-radius:8px;background:var(--blue);color:var(--surface);display:grid;place-items:center;flex-shrink:0}
+.mark svg{width:18px;height:18px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border-radius:10px;border:1.5px solid var(--line-strong);background:var(--surface);font-weight:600;font-size:14.5px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--ink)}
+.btn.primary{background:var(--blue);border-color:var(--blue);color:var(--surface)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.small{min-height:36px;padding:0 12px;font-size:13.5px;border-radius:8px}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--stamp);border-color:var(--stamp)}
+.btn[disabled]{opacity:.55;cursor:not-allowed}
+.icon-btn{width:44px;padding:0}
+.btn svg{width:18px;height:18px}
+input[type="file"].hidden-file{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+
+main{padding-block:22px 64px;display:flex;flex-direction:column;gap:28px}
+.banner{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:12px;background:var(--amber-tint);color:var(--ink);font-size:14.5px}
+.banner.info{background:var(--blue-tint)}
+.banner.err{background:var(--stamp-tint)}
+.banner strong{display:block}
+
+/* progress */
+.progress{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.progress-head{display:flex;align-items:center;gap:10px;justify-content:space-between;flex-wrap:wrap}
+.bar{height:6px;border-radius:99px;background:var(--line);overflow:hidden}
+.bar > span{display:block;height:100%;background:var(--blue);width:0;transition:width .3s}
+.log{max-height:180px;overflow:auto;font-family:var(--mono);font-size:12.5px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+.log .ok{color:var(--green)} .log .bad{color:var(--stamp)}
+
+/* tiles */
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:4px}
+.tile .v{font-family:var(--display);font-stretch:108%;font-weight:800;font-size:26px;line-height:1.1;font-variant-numeric:tabular-nums}
+.tile .v.alert{color:var(--stamp)}
+.tile .l{font-size:13px;color:var(--muted)}
+
+section.sec{display:flex;flex-direction:column;gap:12px}
+.sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+
+/* cards list */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.card.flagged{border-color:var(--stamp)}
+.card-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.card-top .amt{font-family:var(--mono);font-weight:600;font-size:16px;white-space:nowrap}
+.meta{font-size:13px;color:var(--muted)}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:11.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;padding:3px 8px;border-radius:6px;border:1.5px solid currentColor;white-space:nowrap}
+.chip.stamp{color:var(--stamp)} .chip.blue{color:var(--blue)} .chip.green{color:var(--green)} .chip.amber{color:var(--amber)} .chip.grey{color:var(--muted)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:2px}
+
+/* tables */
+.table-scroll{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+table{width:100%;border-collapse:collapse;min-width:720px;font-size:14.5px}
+th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+th{font-family:var(--mono);font-weight:500;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);background:var(--surface-2)}
+td.r,th.r{text-align:right}
+td .sub{display:block;font-size:12.5px;color:var(--muted)}
+tr.dim td{opacity:.6}
+.visually-hidden{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.empty{padding:22px;text-align:center;color:var(--muted);background:var(--surface);border:1px dashed var(--line-strong);border-radius:12px}
+
+/* accounts */
+.accounts{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+.acct{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:4px}
+.acct .bal{font-family:var(--display);font-stretch:106%;font-weight:800;font-size:24px;font-variant-numeric:tabular-nums}
+.acct .bal.neg{color:var(--stamp)}
+
+/* cases */
+.case{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 16px}
+.case .right{display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+.case .events{grid-column:1 / -1;font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:2px;border-top:1px dashed var(--line);padding-top:8px}
+.case select{min-height:36px;border-radius:8px;border:1.5px solid var(--line-strong);background:var(--surface);padding:0 8px}
+.deadline{font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--stamp)}
+.deadline.ok{color:var(--muted)}
+
+/* onboarding */
+.onboard{background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:22px;display:flex;flex-direction:column;gap:16px}
+.onboard ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:10px}
+
+/* dialogs */
+dialog{border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);padding:0;width:min(640px,calc(100vw - 24px));max-height:calc(100vh - 40px);box-shadow:var(--shadow)}
+dialog::backdrop{background:rgba(10,14,20,.45)}
+.dlg{display:flex;flex-direction:column;gap:14px;padding:20px;max-height:calc(100vh - 40px);overflow:auto}
+.dlg-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label,.field .lbl{font-weight:600;font-size:14px}
+.field .hint{font-size:12.5px;color:var(--muted)}
+.field input,.field textarea,.field select{border:1.5px solid var(--line-strong);border-radius:8px;background:var(--surface);padding:10px 11px;min-height:44px}
+.field textarea{min-height:220px;resize:vertical;font-family:var(--body);line-height:1.5}
+.radios{display:flex;flex-direction:column;gap:6px}
+.radios label{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;cursor:pointer;font-weight:500}
+.radios label:has(input:checked){border-color:var(--blue);background:var(--blue-tint)}
+.radios input{margin-top:4px}
+.radios .d{display:block;font-size:12.5px;color:var(--muted);font-weight:400}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.check{display:flex;gap:8px;align-items:center;font-size:14px}
+.check input{width:18px;height:18px}
+.statements-list{display:flex;flex-direction:column}
+.statements-list .it{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}
+.statements-list .it:last-child{border-bottom:0}
+
+@media (max-width:820px){
+  .tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .case{grid-template-columns:minmax(0,1fr)}
+  .case .right{align-items:flex-start}
+}
+@media (max-width:520px){
+  .top .btn .lbl-long{display:none}
+}
+@media (prefers-reduced-motion: reduce){ .bar > span{transition:none} }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 4.5 6v5.5c0 4.6 3.1 8.3 7.5 9.5 4.4-1.2 7.5-4.9 7.5-9.5V6L12 3z" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"></path><path d="m8.8 12 2.2 2.2 4.2-4.4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5.5" width="18" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.9"></rect><path d="m3.5 7 8.5 6 8.5-6" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V4m0 0-4 4m4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"></path><path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"></path></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.9"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"></path></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></symbol>
+  </defs>
+</svg>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand"><span class="mark"><svg aria-hidden="true"><use href="#i-shield"></use></svg></span>BankBuddy</div>
+    <button class="btn primary" id="btn-scan" type="button" data-action="scan"><svg aria-hidden="true"><use href="#i-mail"></use></svg><span>Check Gmail</span></button>
+    <button class="btn" type="button" id="btn-file" data-action="pick-file"><svg aria-hidden="true"><use href="#i-upload"></use></svg><span>Add PDF<span class="lbl-long"> statements</span></span></button>
+    <input class="hidden-file" type="file" id="file-input" accept="application/pdf,.pdf" multiple>
+    <button class="btn icon-btn" type="button" data-action="open-settings" aria-label="Settings"><svg aria-hidden="true"><use href="#i-gear"></use></svg></button>
+  </div>
+</header>
+
+<main class="wrap" id="app">
+  <div id="banners"></div>
+  <div id="progress" hidden></div>
+  <div id="content">
+    <div class="onboard">
+      <h2>Loading your BankBuddy…</h2>
+      <p class="muted">Connecting to your saved data.</p>
+    </div>
+  </div>
+</main>
+
+<!-- Settings dialog -->
+<dialog id="dlg-settings" aria-labelledby="settings-title">
+  <form class="dlg" id="settings-form" method="dialog">
+    <div class="dlg-head">
+      <div><span class="eyebrow">Settings</span><h2 id="settings-title">Passwords and your details</h2></div>
+      <button class="btn icon-btn ghost" type="button" data-action="close-dialog" aria-label="Close"><svg aria-hidden="true"><use href="#i-x"></use></svg></button>
+    </div>
+    <div class="banner info"><div><strong>Statement passwords stay on this device.</strong>Banks lock emailed statements with a password, usually based on your ID number. BankBuddy only uses these to open your statements. They are never saved online.</div></div>
+    <div class="field">
+      <label for="pw-capitec">Capitec account numbers</label>
+      <textarea id="pw-capitec" rows="2" style="min-height:70px" autocomplete="off" spellcheck="false" placeholder="One per line"></textarea>
+      <span class="hint">Capitec locks emailed statements with your full account number. Add each account, one per line.</span>
+    </div>
+    <div class="field">
+      <label for="pw-fnb">FNB statement password</label>
+      <input id="pw-fnb" type="password" autocomplete="off" spellcheck="false">
+      <span class="hint">FNB says what it is in the email that comes with the statement.</span>
+    </div>
+    <div class="field">
+      <label for="pw-other">Other passwords to try</label>
+      <textarea id="pw-other" rows="2" style="min-height:70px" autocomplete="off" spellcheck="false" placeholder="One per line"></textarea>
+      <span class="hint">Tried on any statement the ones above can’t open.</span>
+    </div>
+    <label class="check"><input type="checkbox" id="pw-remember"> Remember these passwords on this device</label>
+    <hr style="border:0;border-top:1px solid var(--line);margin:4px 0">
+    <div class="field">
+      <label for="me-name">Your full name (for letters)</label>
+      <input id="me-name" type="text" autocomplete="name">
+    </div>
+    <div class="row">
+      <div class="field" style="flex:1 1 220px">
+        <label for="me-email">Your email</label>
+        <input id="me-email" type="email" autocomplete="email">
+      </div>
+      <div class="field" style="flex:1 1 160px">
+        <label for="me-phone">Your phone</label>
+        <input id="me-phone" type="tel" autocomplete="tel">
+      </div>
+    </div>
+    <div class="row" style="justify-content:space-between">
+      <button class="btn danger" type="button" data-action="forget-all">Delete all BankBuddy data</button>
+      <button class="btn primary" type="button" data-action="save-settings">Save</button>
+    </div>
+    <div id="forget-confirm" hidden class="banner err">
+      <div>
+        <strong>Delete everything?</strong>
+        This removes all imported statements, cases and settings from BankBuddy. Your emails and Gmail drafts are not touched.
+        <div class="row" style="margin-top:10px"><button class="btn danger small" type="button" data-action="forget-yes">Yes, delete it all</button><button class="btn small" type="button" data-action="forget-no">Cancel</button></div>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<!-- Letter dialog -->
+<dialog id="dlg-letter" aria-labelledby="letter-title">
+  <div class="dlg">
+    <div class="dlg-head">
+      <div><span class="eyebrow" id="letter-eyebrow">Letter</span><h2 id="letter-title">Write a letter</h2></div>
+      <button class="btn icon-btn ghost" type="button" data-action="close-dialog" aria-label="Close"><svg aria-hidden="true"><use href="#i-x"></use></svg></button>
+    </div>
+    <div id="letter-step1">
+      <div class="field">
+        <span class="lbl">What do you want to do?</span>
+        <div class="radios" id="letter-types"></div>
+      </div>
+      <div class="row" style="margin-top:12px">
+        <div class="field" style="flex:1 1 260px">
+          <label for="letter-to">Company’s email address</label>
+          <input id="letter-to" type="email" placeholder="e.g. cancellations@company.co.za">
+          <span class="hint">Optional. You can add it in Gmail before sending.</span>
+        </div>
+      </div>
+      <div class="field" style="margin-top:12px">
+        <label for="letter-extra">Anything else they should know?</label>
+        <input id="letter-extra" type="text" placeholder="e.g. policy or membership number, when you signed up">
+      </div>
+      <div class="row" style="margin-top:14px;justify-content:flex-end">
+        <button class="btn primary" type="button" data-action="letter-write">Write it with Claude</button>
+      </div>
+    </div>
+    <div id="letter-step2" hidden>
+      <div class="field">
+        <label for="letter-subject">Subject</label>
+        <input id="letter-subject" type="text">
+      </div>
+      <div class="field">
+        <label for="letter-body">Letter</label>
+        <textarea id="letter-body"></textarea>
+        <span class="hint">Check it and edit anything. It goes into your Gmail as a draft. Nothing is sent until you press Send there.</span>
+      </div>
+      <div class="row" style="justify-content:space-between">
+        <button class="btn" type="button" data-action="letter-back">Back</button>
+        <div class="row">
+          <button class="btn" type="button" data-action="letter-copy">Copy text</button>
+          <button class="btn primary" type="button" data-action="letter-draft">Save as Gmail draft</button>
+        </div>
+      </div>
+    </div>
+    <p id="letter-status" class="small muted" role="status"></p>
+  </div>
+</dialog>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------------- constants ---------------- */
+  const DAY = 86400000;
+  const DISPUTE_DAYS = 60;
+  const GMAIL = 'Gmail';
+  const BANK_HELP = {
+    FNB: 'In the FNB app you can dispute a debit order of R200 or less yourself. For more than R200, call FNB or go to a branch.',
+    Capitec: 'In the Capitec app you can dispute a debit order under R800 yourself (R6 fee). For larger amounts, call Capitec or go to a branch (R30).'
+  };
+  const LETTER_TYPES = [
+    { id: 'unauthorised', label: 'I never agreed to this: cancel and refund', d: 'Demands they stop collecting, cancel any mandate and refund every debit.' },
+    { id: 'cancel_debit', label: 'Cancel this debit order and agreement', d: 'Ends the agreement and the debit order from now on.' },
+    { id: 'cancel_sub', label: 'Cancel this subscription', d: 'Cancels before the next billing date and asks for confirmation.' },
+    { id: 'contract', label: 'End a fixed-term contract (20 business days’ notice)', d: 'Uses the Consumer Protection Act, section 14. Covers contracts in your own name, not a company’s.' },
+    { id: 'double', label: 'Refund a double charge', d: 'Asks them to refund the duplicate amount.' },
+    { id: 'complaint', label: 'Formal complaint', d: 'Sets out the problem and the outcome you want, and says you’ll go to the ombud if needed.' }
+  ];
+  const STATUSES = [
+    ['new', 'New'], ['drafted', 'Letter drafted'], ['sent', 'Letter sent'], ['disputed', 'Disputed with bank'],
+    ['waiting', 'Waiting for reply'], ['escalated', 'Escalated to ombud'], ['resolved', 'Resolved'], ['closed', 'Closed']
+  ];
+
+  /* ---------------- state ---------------- */
+  const S = {
+    ready: false, uid: null,
+    db: null, mcp: null, sample: null,
+    storeMode: 'memory',
+    statements: [], cases: [], settings: {},
+    pw: { FNB: '', Capitec: '', other: '' },
+    busy: false, banners: {},
+    letterFor: null
+  };
+
+  const $ = (sel, root) => (root || document).querySelector(sel);
+  const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const money = (n) => {
+    if (n == null || isNaN(n)) return '–';
+    const s = Math.abs(n).toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return (n < 0 ? '−R' : 'R') + s;
+  };
+  const moneyShort = (n) => {
+    if (n == null || isNaN(n)) return '–';
+    return 'R' + Math.round(Math.abs(n)).toLocaleString('en-ZA');
+  };
+  const parseDate = (s) => { const d = new Date(String(s) + 'T00:00:00'); return isNaN(d) ? null : d; };
+  const fmtDate = (s) => { const d = typeof s === 'string' ? parseDate(s) : s; return d ? d.toLocaleDateString('en-ZA', { day: 'numeric', month: 'short', year: 'numeric' }) : '–'; };
+  const today = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+  const daysBetween = (a, b) => Math.round((b - a) / DAY);
+  const isoDay = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const addBusinessDays = (d, n) => { const x = new Date(d); let k = 0; while (k < n) { x.setDate(x.getDate() + 1); const w = x.getDay(); if (w !== 0 && w !== 6) k++; } return x; };
+  const safeId = (s) => String(s).replace(/[^A-Za-z0-9_\-.~:@+]/g, '-').replace(/^\.+$/, 'x').slice(0, 180);
+  const norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
+  /* ---------------- local storage (passwords only) ---------------- */
+  const LS = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+    del(k) { try { localStorage.removeItem(k); } catch (e) {} }
+  };
+  function loadPasswords() {
+    try {
+      const raw = LS.get('bb.pw');
+      if (raw) { const o = JSON.parse(raw); S.pw = Object.assign(S.pw, o); S.pwRemember = true; }
+    } catch (e) {}
+  }
+  function storePasswords(remember) {
+    if (remember) LS.set('bb.pw', JSON.stringify(S.pw)); else LS.del('bb.pw');
+    S.pwRemember = !!remember;
+  }
+
+  /* ---------------- store (db, or memory fallback) ---------------- */
+  const Store = {
+    base: null, unsubs: [],
+    settingsChain: Promise.resolve(),
+    async init() {
+      const [db, user] = await Promise.all([claude.use('db').catch(() => null), claude.use('user').catch(() => null)]);
+      let uid = null;
+      if (user && typeof user.id === 'function') { try { uid = await user.id(); } catch (e) { uid = null; } }
+      if (!db || !uid) {
+        S.storeMode = 'memory';
+        banner('store', 'warn', 'Nothing will be saved after you close this page.', 'Saving isn’t available in this view. Open BankBuddy from your Claude artifacts to keep your data.');
+        return;
+      }
+      try {
+        this.base = 'data/users/' + uid;
+        this.settingsRef = db.doc(this.base + '/settings');
+        this.profile = db.doc(this.base + '/profile');
+        this.stCol = this.profile.collection('statements');
+        this.caseCol = this.profile.collection('cases');
+      } catch (e) {
+        S.storeMode = 'memory';
+        banner('store', 'warn', 'Nothing will be saved after you close this page.', 'Your saved-data space couldn’t be opened.');
+        return;
+      }
+      S.db = db; S.uid = uid; S.storeMode = 'db';
+      const onErr = (e) => banner('store', 'err', 'Saved data stopped updating.', 'Reload the page to reconnect (' + esc(e && e.code) + ').');
+      this.unsubs.push(this.settingsRef.onSnapshot((snap) => { S.settings = snap.exists ? Object.assign({}, snap.data()) : {}; render(); }, onErr));
+      this.unsubs.push(this.stCol.onSnapshot((qs) => { S.statements = qs.docs.map(d => Object.assign({ id: d.id }, d.data())); render(); }, onErr));
+      this.unsubs.push(this.caseCol.onSnapshot((qs) => { S.cases = qs.docs.map(d => Object.assign({ id: d.id }, d.data())); render(); }, onErr));
+    },
+    async saveStatement(id, data) {
+      if (S.storeMode !== 'db') { S.statements = S.statements.filter(s => s.id !== id).concat([Object.assign({ id }, data)]); render(); return; }
+      await this.stCol.doc(id).set(data);
+    },
+    async deleteStatement(id) {
+      if (S.storeMode !== 'db') { S.statements = S.statements.filter(s => s.id !== id); render(); return; }
+      await this.stCol.doc(id).delete();
+    },
+    async saveCase(id, data) {
+      if (S.storeMode !== 'db') { S.cases = S.cases.filter(c => c.id !== id).concat([Object.assign({ id }, data)]); render(); return; }
+      await this.caseCol.doc(id).set(data);
+    },
+    async deleteCase(id) {
+      if (S.storeMode !== 'db') { S.cases = S.cases.filter(c => c.id !== id); render(); return; }
+      await this.caseCol.doc(id).delete();
+    },
+    patchSettings(patch) {
+      // one write at a time to the settings document
+      const next = Object.assign({}, S.settings, patch);
+      S.settings = next;
+      if (S.storeMode !== 'db') { render(); return Promise.resolve(); }
+      this.settingsChain = this.settingsChain.then(() => this.settingsRef.set(next)).catch((e) => { banner('save', 'err', 'A setting couldn’t be saved.', esc(e && e.message)); });
+      return this.settingsChain;
+    },
+    async forgetAll() {
+      const sts = S.statements.slice(), cs = S.cases.slice();
+      for (const s of sts) { try { await this.deleteStatement(s.id); } catch (e) {} }
+      for (const c of cs) { try { await this.deleteCase(c.id); } catch (e) {} }
+      if (S.storeMode === 'db') { try { await this.settingsRef.delete(); } catch (e) {} }
+      S.settings = {}; S.statements = []; S.cases = [];
+      render();
+    }
+  };
+
+  /* ---------------- banners ---------------- */
+  function banner(key, kind, title, text) {
+    if (!title) { delete S.banners[key]; } else { S.banners[key] = { kind, title, text }; }
+    const el = $('#banners');
+    el.innerHTML = Object.keys(S.banners).map(k => {
+      const b = S.banners[k];
+      return '<div class="banner ' + (b.kind === 'err' ? 'err' : b.kind === 'info' ? 'info' : '') + '" style="margin-bottom:10px"><div><strong>' + esc(b.title) + '</strong>' + (b.text || '') + '</div></div>';
+    }).join('');
+  }
+
+  function mcpErrorCopy(e) {
+    const code = e && e.code;
+    switch (code) {
+      case 'server_not_connected': return ['Gmail isn’t connected.', 'Add Gmail in claude.ai Settings → Connectors, then reload this page. You can still add PDF statements by hand.'];
+      case 'needs_reauth': return ['Gmail needs reconnecting.', 'Reconnect Gmail in claude.ai Settings → Connectors, then try again.'];
+      case 'selection_required': return ['Choose which Gmail to use.', 'You have more than one Gmail connected. Pick one when Claude asks, then try again.'];
+      case 'not_in_manifest': return ['Gmail is switched off for BankBuddy.', 'Allow Gmail for this page from its permissions, then try again.'];
+      case 'blocked_by_policy': case 'approval_required': return ['Your organisation blocks this Gmail action.', 'Ask your admin, or add PDF statements by hand.'];
+      case 'not_granted': case 'capability_disabled': case 'capability_removed': return ['Gmail isn’t available in this view.', 'Open BankBuddy from your Claude artifacts, or add PDF statements by hand.'];
+      case 'tool_error': return ['Gmail reported a problem.', esc(e.message || '')];
+      default: return ['Couldn’t reach Gmail.', 'Try again in a moment (' + esc(code || 'error') + ').'];
+    }
+  }
+  function sampleErrorCopy(e) {
+    const code = e && e.code;
+    switch (code) {
+      case 'not_granted': case 'sampling_disabled': case 'not_declared': case 'capability_disabled': case 'capability_removed':
+        return 'Claude isn’t allowed for this page, so statements can’t be read. Allow Claude for BankBuddy and reload.';
+      case 'rate_limited': return 'Claude is busy or you’ve reached your usage limit. Try again a bit later.';
+      case 'session_expired': return 'Sign in to Claude again, then retry.';
+      case 'invalid_json': return 'Claude’s answer couldn’t be read. Try again.';
+      case 'prompt_too_large': return 'This statement is too long to read in one go.';
+      case 'refused': case 'empty_completion': return 'Claude couldn’t read this one.';
+      case 'cancelled': return 'Stopped.';
+      default: return 'Connection problem while asking Claude. Try again.';
+    }
+  }
+  const SAMPLE_FATAL = new Set(['not_granted', 'sampling_disabled', 'not_declared', 'capability_disabled', 'capability_removed', 'session_expired', 'rate_limited']);
+
+  /* ---------------- progress ---------------- */
+  const P = {
+    open(title) {
+      this.lines = []; this.title = title; this.done = 0; this.total = 0;
+      const el = $('#progress'); el.hidden = false;
+      el.innerHTML = '<div class="progress"><div class="progress-head"><strong id="pg-title"></strong><span class="small muted" id="pg-count"></span></div><div class="bar"><span id="pg-bar"></span></div><div class="log" id="pg-log" aria-live="polite"></div></div>';
+      $('#pg-title').textContent = title;
+    },
+    setTotal(n) { this.total = n; this.upd(); },
+    step() { this.done++; this.upd(); },
+    upd() {
+      const c = $('#pg-count'), b = $('#pg-bar');
+      if (c) c.textContent = this.total ? (this.done + ' of ' + this.total) : '';
+      if (b) b.style.width = this.total ? Math.round(100 * this.done / this.total) + '%' : '8%';
+    },
+    log(text, kind) {
+      const l = $('#pg-log'); if (!l) return;
+      const d = document.createElement('div'); if (kind) d.className = kind; d.textContent = text; l.appendChild(d); l.scrollTop = l.scrollHeight;
+    },
+    finish(title) { const t = $('#pg-title'); if (t) t.textContent = title; this.total = this.total || 1; this.done = this.total; this.upd(); }
+  };
+
+  /* ---------------- PDF → text ---------------- */
+  function pdfReady() { return typeof window.pdfjsLib !== 'undefined'; }
+  if (pdfReady()) {
+    try { window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; } catch (e) {}
+  }
+  function linesFromItems(items) {
+    const rows = [];
+    for (const it of items) {
+      if (!it.str || !it.str.trim()) continue;
+      const x = it.transform[4], y = it.transform[5];
+      let row = null;
+      for (const r of rows) { if (Math.abs(r.y - y) < 2.5) { row = r; break; } }
+      if (!row) { row = { y, parts: [] }; rows.push(row); }
+      row.parts.push({ x, s: it.str, w: it.width || 0 });
+    }
+    rows.sort((a, b) => b.y - a.y);
+    return rows.map(r => {
+      r.parts.sort((a, b) => a.x - b.x);
+      let out = '', end = null;
+      for (const p of r.parts) {
+        if (end !== null) out += (p.x - end > 10 ? ' | ' : ' ');
+        out += p.s.trim();
+        end = p.x + p.w;
+      }
+      return out;
+    }).join('\n');
+  }
+  const lines = (s) => String(s || '').split(/[\r\n,;]+/).map(x => x.trim()).filter(Boolean);
+  function passwordCandidates(bankHint) {
+    const list = [];
+    const add = (p) => { if (p && !list.includes(p)) list.push(p); };
+    const cap = lines(S.pw.Capitec).map(x => x.replace(/\s+/g, ''));
+    if (bankHint === 'FNB') add(S.pw.FNB);
+    if (bankHint === 'Capitec') cap.forEach(add);
+    add(S.pw.FNB); cap.forEach(add); lines(S.pw.other).forEach(add);
+    return list;
+  }
+  async function pdfToPages(bytes, bankHint) {
+    if (!pdfReady()) { const e = new Error('The PDF reader didn’t load. Reload the page.'); e.code = 'pdfjs'; throw e; }
+    const tries = [undefined].concat(passwordCandidates(bankHint));
+    let sawPassword = false;
+    for (const pw of tries) {
+      let doc = null;
+      try {
+        const opts = { data: bytes.slice(0), isEvalSupported: false, disableFontFace: true, useSystemFonts: false };
+        if (pw !== undefined) opts.password = pw;
+        doc = await window.pdfjsLib.getDocument(opts).promise;
+        const pages = [];
+        for (let i = 1; i <= doc.numPages; i++) {
+          const page = await doc.getPage(i);
+          const tc = await page.getTextContent();
+          pages.push(linesFromItems(tc.items));
+        }
+        try { await doc.destroy(); } catch (e) {}
+        return pages;
+      } catch (e) {
+        if (doc) { try { await doc.destroy(); } catch (x) {} }
+        if (e && e.name === 'PasswordException') { sawPassword = true; continue; }
+        throw e;
+      }
+    }
+    const err = new Error('password'); err.code = sawPassword ? 'password' : 'unreadable'; throw err;
+  }
+
+  /* ---------------- statement → data (Claude) ---------------- */
+  const EXTRACT_RULES = [
+    'You are reading a South African bank statement. The text was pulled out of the PDF, so columns are separated by " | " and some lines may be split.',
+    'Reply with ONLY one JSON object, no other text, shaped like:',
+    '{"is_bank_statement": true, "bank": "FNB", "account_name": "Gold Cheque", "account_last4": "1234", "period_start": "2026-08-01", "period_end": "2026-08-31", "opening_balance": 1200.50, "closing_balance": 980.10, "transactions": [{"date": "2026-08-01", "description": "DEBIT ORDER SAFEHAVEN 0331", "amount": -189.00, "kind": "debit_order", "merchant": "SafeHaven"}]}',
+    'Rules:',
+    '- is_bank_statement: false if this is not a bank or credit card account statement (then leave other fields empty).',
+    '- account_last4: only the last 4 digits of the account number; never the full number.',
+    '- amount: in rands; NEGATIVE for money going out (debits, fees, purchases), POSITIVE for money coming in.',
+    '- kind: one of "debit_order" (debit orders, DebiCheck, NAEDO/AEDO, EFT debits by companies, insurance premiums, loan or contract collections), "card_subscription" (card charges to subscription services such as streaming, music, apps, software, cloud storage, memberships), "card_purchase" (other card spending), "fee" (bank fees, charges, interest charged), "transfer" (payments you made, own-account transfers, cash sent), "cash" (ATM withdrawals), "income" (salary, deposits, refunds, payments received), "other".',
+    '- merchant: the company’s plain name as a person would say it (e.g. "Discovery Life", "Netflix", "Virgin Active"), without reference numbers, dates or card numbers. For bank fees use e.g. "FNB monthly fee".',
+    '- Include every transaction line once. Do not invent anything. Dates as YYYY-MM-DD using the statement’s own years.',
+    '- Balances in rands; negative if overdrawn. Use null if not shown.'
+  ].join('\n');
+
+  async function extractStatement(pages, bankHint, label) {
+    const sample = S.sample;
+    if (!sample) { const e = new Error('Claude isn’t available'); e.code = 'not_granted'; throw e; }
+    const MAX = 40000;
+    const chunks = []; let cur = [];
+    let curLen = 0;
+    pages.forEach((pg, i) => {
+      const t = '--- page ' + (i + 1) + ' ---\n' + pg;
+      if (curLen + t.length > MAX && cur.length) { chunks.push(cur.join('\n')); cur = []; curLen = 0; }
+      cur.push(t.slice(0, MAX)); curLen += Math.min(t.length, MAX);
+    });
+    if (cur.length) chunks.push(cur.join('\n'));
+    let result = null;
+    for (let i = 0; i < chunks.length; i++) {
+      const head = i === 0 ? EXTRACT_RULES : EXTRACT_RULES + '\nThis is a LATER PART of the same statement: fill "transactions" only; other fields may be null.';
+      const prompt = head + '\nBank (from the email sender, may be empty): ' + (bankHint || 'unknown') + '\n\nSTATEMENT TEXT:\n<<<\n' + chunks[i] + '\n>>>';
+      if (P.log && chunks.length > 1) P.log('   reading part ' + (i + 1) + ' of ' + chunks.length + '…');
+      const data = await sample.json(prompt, { modelTier: 'default', cache: { gcTime: 86400000 } });
+      if (!data || typeof data !== 'object') { const e = new Error('bad'); e.code = 'invalid_json'; throw e; }
+      if (i === 0) result = data;
+      else if (Array.isArray(data.transactions)) result.transactions = (result.transactions || []).concat(data.transactions);
+    }
+    if (!result) { const e = new Error('empty'); e.code = 'empty_completion'; throw e; }
+    return cleanStatement(result, bankHint, label);
+  }
+
+  const KINDS = new Set(['debit_order', 'card_subscription', 'card_purchase', 'fee', 'transfer', 'cash', 'income', 'other']);
+  function cleanStatement(r, bankHint, label) {
+    const num = (v) => (v === null || v === undefined || v === '' || isNaN(Number(v))) ? null : Math.round(Number(v) * 100) / 100;
+    const day = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : null);
+    const txs = (Array.isArray(r.transactions) ? r.transactions : []).map(t => ({
+      date: day(t.date), description: String(t.description || '').slice(0, 160),
+      amount: num(t.amount), kind: KINDS.has(t.kind) ? t.kind : 'other',
+      merchant: String(t.merchant || t.description || '').slice(0, 80)
+    })).filter(t => t.date && t.amount !== null);
+    const last4 = String(r.account_last4 || '').replace(/\D/g, '').slice(-4);
+    return {
+      isStatement: r.is_bank_statement !== false,
+      bank: String(r.bank || bankHint || 'Bank').slice(0, 40),
+      accountName: String(r.account_name || '').slice(0, 60),
+      accountLast4: last4,
+      periodStart: day(r.period_start) || (txs[0] && txs[0].date) || null,
+      periodEnd: day(r.period_end) || (txs.length ? txs[txs.length - 1].date : null),
+      openingBalance: num(r.opening_balance),
+      closingBalance: num(r.closing_balance),
+      transactions: txs,
+      label: label || ''
+    };
+  }
+
+  async function importPdfBytes(bytes, meta) {
+    // meta: {bankHint, source:{type, messageId?, filename?, date?}, label}
+    const pages = await pdfToPages(bytes, meta.bankHint);
+    const text = pages.join('\n').trim();
+    if (text.length < 40) { const e = new Error('No text in this PDF (it may be a scanned image).'); e.code = 'no_text'; throw e; }
+    const st = await extractStatement(pages, meta.bankHint, meta.label);
+    if (!st.isStatement) { const e = new Error('Not a bank statement'); e.code = 'not_statement'; throw e; }
+    const id = safeId([st.bank, st.accountLast4 || 'acct', st.periodStart || 'x', st.periodEnd || 'y'].join('_'));
+    const doc = {
+      bank: st.bank, accountName: st.accountName, accountLast4: st.accountLast4,
+      periodStart: st.periodStart, periodEnd: st.periodEnd,
+      openingBalance: st.openingBalance, closingBalance: st.closingBalance,
+      transactions: st.transactions, source: meta.source || {}, importedAt: new Date().toISOString()
+    };
+    await Store.saveStatement(id, doc);
+    return { id, doc };
+  }
+
+  /* ---------------- Gmail ---------------- */
+  // Statement emails. The Gmail connector gives attachments only inside the RAW
+  // message (base64url RFC 822), so the PDF is unpacked from the MIME here.
+  const GMAIL_SEARCHES = [
+    { q: 'from:capitecbank.co.za filename:pdf subject:statement newer_than:2y', bank: 'Capitec' },
+    { q: 'from:fnb.co.za filename:pdf newer_than:2y', bank: 'FNB' },
+    { q: 'subject:bankbuddy filename:pdf newer_than:2y', bank: '' }
+  ];
+  const RETRYABLE = (e) => !!(e && e.retryable);
+  async function callRead(tool, input, opts) {
+    try { return await S.mcp.callTool(GMAIL, tool, input, opts); }
+    catch (e) {
+      if (!RETRYABLE(e)) throw e;
+      await new Promise(r => setTimeout(r, Math.min(60000, (e.retryAfterMs || 1500) + Math.random() * 1000)));
+      return await S.mcp.callTool(GMAIL, tool, input, opts);
+    }
+  }
+  function decodeEntities(s) { const t = document.createElement('textarea'); t.innerHTML = String(s || ''); return t.value; }
+  async function gmailSearch(query) {
+    const out = []; let token = null; let pages = 0;
+    do {
+      const input = { query, pageSize: 50 };
+      if (token) input.pageToken = token;
+      const res = await callRead('search_threads', input, { cache: false });
+      const p = (res && res.payload && typeof res.payload === 'object') ? res.payload : {};
+      for (const th of (p.threads || [])) for (const m of (th.messages || [])) out.push(m);
+      token = p.nextPageToken || null; pages++;
+    } while (token && pages < 6);
+    return out;
+  }
+  async function listStatementMessages() {
+    const seen = new Map();
+    for (const s of GMAIL_SEARCHES) {
+      const msgs = await gmailSearch(s.q);
+      for (const m of msgs) {
+        if (!m || !m.id || seen.has(m.id)) continue;
+        const sender = String(m.sender || '').toLowerCase();
+        const subject = decodeEntities(m.subject || '');
+        let bank = s.bank;
+        if (bank === 'Capitec') {
+          if (!/capitecbank\.co\.za$/.test(sender) || !/statement/i.test(subject) || /confirmation|notification|beneficiary/i.test(subject)) continue;
+        } else if (bank === 'FNB') {
+          if (!/fnb\.co\.za$/.test(sender) || /proof of payment|payment notification|notification of payment/i.test(subject)) continue;
+        } else {
+          if (!/bankbuddy/i.test(subject)) continue;
+          bank = /fnb|first national/i.test(subject) ? 'FNB' : /capitec/i.test(subject) ? 'Capitec' : '';
+        }
+        seen.set(m.id, { id: m.id, bank, subject, date: m.date || null });
+      }
+    }
+    return Array.from(seen.values()).sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  }
+  function b64urlToBinary(s) {
+    let t = String(s).replace(/-/g, '+').replace(/_/g, '/').replace(/[^A-Za-z0-9+/=]/g, '');
+    while (t.length % 4) t += '=';
+    return atob(t);
+  }
+  function binaryToBytes(bin) { const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i) & 255; return u; }
+  function parseHeaders(text) {
+    const h = {};
+    const unfolded = text.replace(/\r?\n[ \t]+/g, ' ');
+    for (const line of unfolded.split(/\r?\n/)) {
+      const i = line.indexOf(':');
+      if (i > 0) { const k = line.slice(0, i).trim().toLowerCase(); if (!(k in h)) h[k] = line.slice(i + 1).trim(); }
+    }
+    return h;
+  }
+  function mimeLeaves(str, depth) {
+    if ((depth || 0) > 8) return [];
+    const m = /\r?\n\r?\n/.exec(str);
+    const headerText = m ? str.slice(0, m.index) : str;
+    const body = m ? str.slice(m.index + m[0].length) : '';
+    const headers = parseHeaders(headerText);
+    const ct = headers['content-type'] || 'text/plain';
+    const bm = /boundary\s*=\s*"?([^";\r\n]+)"?/i.exec(ct);
+    if (/^multipart\//i.test(ct) && bm) {
+      const parts = body.split('--' + bm[1]);
+      const out = [];
+      for (let i = 1; i < parts.length; i++) {
+        const part = parts[i];
+        if (part.startsWith('--')) break;
+        out.push.apply(out, mimeLeaves(part.replace(/^\r?\n/, ''), (depth || 0) + 1));
+      }
+      return out;
+    }
+    return [{ headers, body }];
+  }
+  function partFilename(h) {
+    const src = (h['content-disposition'] || '') + ';' + (h['content-type'] || '');
+    const star = /filename\*\s*=\s*(?:[^']*'[^']*')?([^;]+)/i.exec(src);
+    if (star) { try { return decodeURIComponent(star[1].trim().replace(/"/g, '')); } catch (e) {} }
+    const f = /(?:filename|name)\s*=\s*"?([^";]+)"?/i.exec(src);
+    return f ? f[1].trim() : '';
+  }
+  async function fetchPdfAttachments(m) {
+    const res = await callRead('get_message', { messageId: m.id, messageFormat: 'RAW' }, { cache: false });
+    const p = (res && res.payload && typeof res.payload === 'object') ? res.payload : {};
+    if (!p.raw) return [];
+    const leaves = mimeLeaves(b64urlToBinary(p.raw), 0);
+    const files = [];
+    for (const lf of leaves) {
+      const ct = (lf.headers['content-type'] || '').toLowerCase();
+      const name = partFilename(lf.headers);
+      const isPdf = ct.indexOf('application/pdf') === 0 || /\.pdf$/i.test(name);
+      if (!isPdf) continue;
+      const enc = (lf.headers['content-transfer-encoding'] || '').toLowerCase();
+      let bin;
+      if (enc === 'base64') bin = atob(lf.body.replace(/[^A-Za-z0-9+/=]/g, ''));
+      else bin = lf.body;
+      const bytes = binaryToBytes(bin);
+      if (bytes.length > 200 && String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3]) === '%PDF') files.push({ filename: name || 'statement.pdf', bytes });
+    }
+    return files;
+  }
+
+  async function scanGmail() {
+    if (S.busy) return;
+    if (!S.mcp) { const [t, x] = mcpErrorCopy({ code: 'not_granted' }); banner('gmail', 'err', t, x); return; }
+    if (!S.sample) { banner('claude', 'err', 'Claude isn’t available here.', 'BankBuddy needs Claude to read statements. Open it from your Claude artifacts.'); return; }
+    S.busy = true; setBusy(true);
+    banner('gmail', null);
+    P.open('Checking Gmail for bank statements…');
+    const processed = Object.assign({}, S.settings.processed || {});
+    let imported = 0, needPw = 0, failed = 0;
+    try {
+      const msgs = await listStatementMessages();
+      const todo = msgs.filter(m => processed[m.id] !== 'ok' && processed[m.id] !== 'no_pdf');
+      P.log('Found ' + msgs.length + ' statement email' + (msgs.length === 1 ? '' : 's') + ', ' + todo.length + ' new or not yet read.');
+      P.setTotal(todo.length);
+      for (const m of todo) {
+        const label = (m.bank || 'Bank') + ' · ' + (m.date ? fmtDate(m.date.slice(0, 10)) : '') + (m.subject ? ' · ' + m.subject : '');
+        P.log('→ ' + label);
+        try {
+          let files;
+          try { files = await fetchPdfAttachments(m); } catch (ge) { throw Object.assign({}, ge, { src: 'gmail', code: ge && ge.code, message: ge && ge.message }); }
+          if (!files.length) { processed[m.id] = 'no_pdf'; P.log('   no PDF found in this email', 'bad'); P.step(); continue; }
+          for (const f of files) {
+            const r = await importPdfBytes(f.bytes, { bankHint: m.bank, source: { type: 'gmail', messageId: m.id, filename: f.filename, date: m.date || null }, label });
+            imported++;
+            P.log('   ✓ ' + r.doc.bank + ' ' + (r.doc.accountName || '') + ' ' + (r.doc.periodStart ? fmtDate(r.doc.periodStart) : '') + ' – ' + (r.doc.periodEnd ? fmtDate(r.doc.periodEnd) : '') + ' · ' + r.doc.transactions.length + ' transactions', 'ok');
+          }
+          processed[m.id] = 'ok';
+        } catch (e) {
+          if (e && e.code === 'password') { processed[m.id] = 'password'; needPw++; P.log('   locked: add the ' + (m.bank || 'statement') + ' password in Settings', 'bad'); }
+          else if (e && e.code === 'not_statement') { processed[m.id] = 'ok'; P.log('   skipped: not a bank statement'); }
+          else if (e && e.code && SAMPLE_FATAL.has(e.code)) { processed[m.id] = 'error'; failed++; P.log('   ' + sampleErrorCopy(e), 'bad'); P.step(); throw e; }
+          else if (e && e.code && /^(needs_reauth|server_not_connected|not_in_manifest|selection_required|blocked_by_policy|approval_required|not_granted|capability_disabled)$/.test(e.code)) { throw e; }
+          else {
+            processed[m.id] = 'error'; failed++;
+            let msg;
+            if (e && e.src === 'gmail') msg = mcpErrorCopy(e)[0];
+            else if (e && (e.code === 'pdfjs' || e.code === 'no_text' || e.code === 'unreadable' || !e.code)) msg = (e && e.message) || 'Couldn’t read this one';
+            else msg = sampleErrorCopy(e);
+            P.log('   ' + msg, 'bad');
+          }
+        }
+        P.step();
+      }
+      P.finish(imported ? ('Imported ' + imported + ' statement' + (imported === 1 ? '' : 's')) : 'No new statements');
+    } catch (e) {
+      if (e && e.code && SAMPLE_FATAL.has(e.code)) { banner('claude', 'err', 'Stopped reading statements.', esc(sampleErrorCopy(e))); P.finish('Stopped'); }
+      else { const [t, x] = mcpErrorCopy(e); banner('gmail', 'err', t, x); P.finish('Stopped'); }
+    } finally {
+      await Store.patchSettings({ processed, lastScanAt: new Date().toISOString() });
+      if (needPw) banner('pw', 'warn', needPw + ' statement' + (needPw === 1 ? ' is' : 's are') + ' locked.', ' Add the statement password in Settings, then press Check Gmail again.');
+      else banner('pw', null);
+      S.busy = false; setBusy(false);
+    }
+  }
+
+  async function importFiles(fileList) {
+    if (S.busy || !fileList || !fileList.length) return;
+    if (!S.sample) { banner('claude', 'err', 'Claude isn’t available here.', 'BankBuddy needs Claude to read statements. Open it from your Claude artifacts.'); return; }
+    S.busy = true; setBusy(true);
+    P.open('Reading your statements…');
+    P.setTotal(fileList.length);
+    let ok = 0;
+    for (const f of Array.from(fileList)) {
+      P.log('→ ' + f.name);
+      try {
+        const bytes = new Uint8Array(await f.arrayBuffer());
+        const hint = /fnb|first ?national/i.test(f.name) ? 'FNB' : /capitec/i.test(f.name) ? 'Capitec' : '';
+        const r = await importPdfBytes(bytes, { bankHint: hint, source: { type: 'upload', filename: f.name }, label: f.name });
+        ok++;
+        P.log('   ✓ ' + r.doc.bank + ' ' + (r.doc.accountName || '') + ' · ' + r.doc.transactions.length + ' transactions', 'ok');
+      } catch (e) {
+        if (e && e.code === 'password') P.log('   locked: add the statement password in Settings and add it again', 'bad');
+        else if (e && e.code === 'not_statement') P.log('   skipped: not a bank statement', 'bad');
+        else if (e && e.code && SAMPLE_FATAL.has(e.code)) { P.log('   ' + sampleErrorCopy(e), 'bad'); banner('claude', 'err', 'Stopped reading statements.', esc(sampleErrorCopy(e))); P.step(); break; }
+        else P.log('   ' + ((e && e.code && e.code !== 'pdfjs' && e.code !== 'no_text' && e.code !== 'unreadable') ? sampleErrorCopy(e) : (e && e.message) || 'Couldn’t read this file'), 'bad');
+      }
+      P.step();
+    }
+    P.finish(ok ? ('Imported ' + ok + ' statement' + (ok === 1 ? '' : 's')) : 'Nothing imported');
+    S.busy = false; setBusy(false);
+  }
+
+  function setBusy(b) {
+    const btn = $('#btn-scan'); if (btn) btn.disabled = b;
+    const bf = $('#btn-file'); if (bf) bf.disabled = b;
+  }
+
+  /* ---------------- analysis ---------------- */
+  // Statements can overlap (a monthly statement and a stamped one for the same
+  // weeks). Per account, each date is taken from the first statement that
+  // covers it, so an overlap never looks like a double charge.
+  function allTransactions() {
+    const out = [];
+    const byAcct = new Map();
+    for (const s of S.statements) {
+      const k = s.bank + '|' + s.accountLast4;
+      if (!byAcct.has(k)) byAcct.set(k, []);
+      byAcct.get(k).push(s);
+    }
+    for (const sts of byAcct.values()) {
+      const span = (s) => {
+        const ds = (s.transactions || []).map(t => t.date).filter(Boolean).sort();
+        return [s.periodStart || ds[0] || '', s.periodEnd || ds[ds.length - 1] || ''];
+      };
+      sts.sort((a, b) => {
+        const sa = span(a), sb = span(b);
+        const la = daysBetween(parseDate(sa[0]) || 0, parseDate(sa[1]) || 0), lb = daysBetween(parseDate(sb[0]) || 0, parseDate(sb[1]) || 0);
+        return la - lb || String(sa[1]).localeCompare(String(sb[1]));
+      });
+      const covered = [];
+      for (const s of sts) {
+        for (const t of (s.transactions || [])) {
+          if (covered.some(r => t.date >= r[0] && t.date <= r[1])) continue;
+          out.push(Object.assign({}, t, { bank: s.bank, last4: s.accountLast4, accountName: s.accountName }));
+        }
+        const sp = span(s);
+        if (sp[0] && sp[1]) covered.push(sp);
+      }
+    }
+    out.sort((a, b) => a.date.localeCompare(b.date));
+    return out;
+  }
+  function coverageStart(bank, last4) {
+    let min = null;
+    for (const s of S.statements) if (s.bank === bank && s.accountLast4 === last4 && s.periodStart) { if (!min || s.periodStart < min) min = s.periodStart; }
+    return min;
+  }
+
+  function analyse() {
+    const txs = allTransactions().filter(t => t.amount < 0);
+    const groups = new Map();
+    for (const t of txs) {
+      let fam = null;
+      if (t.kind === 'debit_order') fam = 'debit';
+      else if (t.kind === 'card_subscription' || t.kind === 'card_purchase') fam = 'card';
+      else continue;
+      const key = fam + ':' + norm(t.merchant || t.description).slice(0, 60);
+      if (!groups.has(key)) groups.set(key, { key, fam, merchant: t.merchant || t.description, charges: [], hasSubKind: false });
+      const g = groups.get(key);
+      g.charges.push(t);
+      if (t.kind === 'card_subscription') g.hasSubKind = true;
+    }
+    const now = today();
+    const result = [];
+    for (const g of groups.values()) {
+      g.charges.sort((a, b) => a.date.localeCompare(b.date));
+      const months = Array.from(new Set(g.charges.map(c => c.date.slice(0, 7))));
+      g.months = months;
+      if (g.fam === 'card') {
+        // a card subscription: marked as one, or the same merchant in 2+ months at similar amounts
+        const amts = g.charges.map(c => Math.abs(c.amount));
+        const lastA = amts[amts.length - 1];
+        const similar = amts.filter(a => Math.abs(a - lastA) <= Math.max(5, lastA * 0.15)).length;
+        const perMonth = g.charges.length / months.length;
+        if (!g.hasSubKind && !(months.length >= 2 && similar >= 2 && perMonth <= 1.5)) continue;
+      }
+      const last = g.charges[g.charges.length - 1];
+      g.last = last;
+      g.lastAmount = Math.abs(last.amount);
+      // previous charge in an earlier month
+      const prev = g.charges.slice(0, -1).reverse().find(c => c.date.slice(0, 7) !== last.date.slice(0, 7));
+      g.prevAmount = prev ? Math.abs(prev.amount) : null;
+      g.accounts = Array.from(new Set(g.charges.map(c => c.bank + (c.last4 ? ' ··' + c.last4 : ''))));
+      g.bank = last.bank; g.last4 = last.last4;
+      g.monthly = g.lastAmount;
+      g.yearly = g.lastAmount * 12;
+      g.flags = [];
+      // new: first seen well after this account's statements start
+      const cov = coverageStart(last.bank, last.last4);
+      const first = g.charges[0];
+      if (cov && daysBetween(parseDate(cov), parseDate(first.date)) >= 40 && daysBetween(parseDate(first.date), now) <= 75) g.flags.push('new');
+      // double: same amount twice within 5 days
+      for (let i = 1; i < g.charges.length; i++) {
+        const a = g.charges[i - 1], b = g.charges[i];
+        if (Math.abs(a.amount - b.amount) < 0.01 && daysBetween(parseDate(a.date), parseDate(b.date)) <= 5 && daysBetween(parseDate(b.date), now) <= 120) { g.flags.push('double'); g.doubleDate = b.date; break; }
+      }
+      if (g.prevAmount && g.lastAmount > g.prevAmount * 1.02 && g.lastAmount - g.prevAmount >= 2) g.flags.push('price_up');
+      // dispute window for debit orders
+      if (g.fam === 'debit') {
+        const open = g.charges.filter(c => daysBetween(parseDate(c.date), now) <= DISPUTE_DAYS);
+        g.disputable = open.map(c => ({ date: c.date, amount: c.amount, daysLeft: DISPUTE_DAYS - daysBetween(parseDate(c.date), now) }));
+        g.daysLeft = open.length ? Math.min.apply(null, g.disputable.map(d => d.daysLeft)) : null;
+      }
+      g.decision = (S.settings.decisions || {})[g.key] || null;
+      g.caseOpen = S.cases.some(c => c.groupKey === g.key && !['resolved', 'closed'].includes(c.status));
+      // stale: nothing in the last ~50 days of this account's statements
+      const latestEnd = latestPeriodEnd(g.bank, g.last4);
+      g.stopped = latestEnd ? daysBetween(parseDate(last.date), parseDate(latestEnd)) > 50 : false;
+      result.push(g);
+    }
+    result.sort((a, b) => b.lastAmount - a.lastAmount);
+    return result;
+  }
+  function latestPeriodEnd(bank, last4) {
+    let max = null;
+    for (const s of S.statements) if (s.bank === bank && s.accountLast4 === last4 && s.periodEnd) { if (!max || s.periodEnd > max) max = s.periodEnd; }
+    return max;
+  }
+  function accounts() {
+    const map = new Map();
+    for (const s of S.statements) {
+      const k = s.bank + '|' + s.accountLast4;
+      const cur = map.get(k);
+      if (!cur || String(s.periodEnd) > String(cur.periodEnd)) map.set(k, s);
+    }
+    return Array.from(map.values()).map(s => {
+      const fees = (s.transactions || []).filter(t => t.kind === 'fee' && t.amount < 0).reduce((a, t) => a + Math.abs(t.amount), 0);
+      return { bank: s.bank, last4: s.accountLast4, name: s.accountName, balance: s.closingBalance, asOf: s.periodEnd, fees };
+    }).sort((a, b) => a.bank.localeCompare(b.bank));
+  }
+
+  /* ---------------- render ---------------- */
+  const FLAG_CHIP = {
+    new: '<span class="chip stamp">New</span>',
+    double: '<span class="chip stamp">Charged twice</span>',
+    price_up: '<span class="chip blue">Price up</span>'
+  };
+  function flagText(g) {
+    const out = [];
+    if (g.flags.includes('new')) out.push('Started ' + fmtDate(g.charges[0].date) + '. Do you recognise it?');
+    if (g.flags.includes('double')) out.push('Same amount taken twice around ' + fmtDate(g.doubleDate) + '.');
+    if (g.flags.includes('price_up')) out.push('Up from ' + money(g.prevAmount) + ' to ' + money(g.lastAmount) + ' (' + moneyShort((g.lastAmount - g.prevAmount) * 12) + ' more a year).');
+    return out.join(' ');
+  }
+  function windowText(g) {
+    if (g.fam !== 'debit') return '';
+    if (g.daysLeft == null) return '<span class="deadline ok">Dispute window closed</span>';
+    return '<span class="deadline">' + g.daysLeft + ' day' + (g.daysLeft === 1 ? '' : 's') + ' left to dispute</span>';
+  }
+
+  function render() {
+    if (!S.ready) return;
+    const el = $('#content');
+    const groups = analyse();
+    const accts = accounts();
+    const hasData = S.statements.length > 0;
+
+    let html = '';
+    if (!hasData) {
+      html += '<div class="onboard">' +
+        '<div><span class="eyebrow">Get started</span><h2 style="margin-top:4px">Let’s find every debit order and subscription</h2></div>' +
+        '<ol>' +
+        '<li><strong>Add your statement passwords.</strong> Capitec locks emailed statements with your full account number. Open <button class="btn small" type="button" data-action="open-settings">Settings</button> and add your account numbers (and your FNB password if you have one). They stay on this device.</li>' +
+        '<li><strong>Press Check Gmail.</strong> BankBuddy finds your Capitec and FNB statement emails, opens the PDFs and has Claude read every line. Gmail and Claude will each ask you once to allow it.</li>' +
+        '<li><strong>Bring in FNB.</strong> This Gmail has no FNB emails yet. Forward FNB statements here with “BankBuddy” in the subject, or download them from the FNB app and use Add PDF.</li>' +
+        '</ol>' +
+        '<p class="small muted">Three months or more of statements makes new, doubled and pricier debit orders easy to spot.</p>' +
+        '</div>';
+      el.innerHTML = html;
+      return;
+    }
+
+    const active = groups.filter(g => !g.stopped);
+    const monthlyOut = active.reduce((a, g) => a + g.monthly, 0);
+    const look = active.filter(g => g.flags.length && g.decision !== 'keep');
+    const openCases = S.cases.filter(c => !['resolved', 'closed'].includes(c.status));
+
+    html += '<div class="tiles">' +
+      tile(moneyShort(monthlyOut), 'Debit orders and subscriptions a month') +
+      tile(String(look.length), 'Need a look', look.length > 0) +
+      tile(String(openCases.length), 'Open cases') +
+      tile(String(accts.length), 'Accounts from ' + S.statements.length + ' statement' + (S.statements.length === 1 ? '' : 's')) +
+      '</div>';
+
+    // needs a look
+    html += '<section class="sec" aria-labelledby="h-look"><div class="sec-head"><h2 id="h-look">Needs a look</h2><span class="small muted">New, doubled or pricier since last time</span></div>';
+    if (!look.length) html += '<div class="empty">Nothing odd right now. BankBuddy flags debit orders and subscriptions that are new, charged twice or went up in price.</div>';
+    else html += '<div class="cards">' + look.map(cardHtml).join('') + '</div>';
+    html += '</section>';
+
+    // debit orders
+    const debits = groups.filter(g => g.fam === 'debit');
+    html += '<section class="sec" aria-labelledby="h-debits"><div class="sec-head"><h2 id="h-debits">Debit orders</h2><span class="small muted">' + debits.length + ' found · since 13 April 2026 you have 60 days to dispute each one</span></div>';
+    html += debits.length ? tableHtml(debits, true) : '<div class="empty">No debit orders found yet.</div>';
+    html += '</section>';
+
+    // subscriptions
+    const subs = groups.filter(g => g.fam === 'card');
+    html += '<section class="sec" aria-labelledby="h-subs"><div class="sec-head"><h2 id="h-subs">Card subscriptions</h2><span class="small muted">Only the company can cancel these. A new card doesn’t stop them.</span></div>';
+    html += subs.length ? tableHtml(subs, false) : '<div class="empty">No card subscriptions found yet.</div>';
+    html += '</section>';
+
+    // accounts
+    html += '<section class="sec" aria-labelledby="h-acc"><div class="sec-head"><h2 id="h-acc">Accounts</h2><span class="small muted">Closing balance on your latest statement</span></div><div class="accounts">' +
+      accts.map(a => '<div class="acct"><span class="eyebrow">' + esc(a.bank) + (a.last4 ? ' ··' + esc(a.last4) : '') + '</span><strong>' + esc(a.name || 'Account') + '</strong>' +
+        '<span class="bal' + (a.balance < 0 ? ' neg' : '') + '">' + money(a.balance) + '</span>' +
+        '<span class="meta">As at ' + fmtDate(a.asOf) + (a.fees ? ' · bank fees that month ' + money(-a.fees) : '') + '</span></div>').join('') +
+      '</div></section>';
+
+    // cases
+    html += '<section class="sec" aria-labelledby="h-cases"><div class="sec-head"><h2 id="h-cases">Cases</h2><span class="small muted">Everything you’ve asked BankBuddy to sort out</span></div>';
+    const cases = S.cases.slice().sort((a, b) => String(b.updatedAt || b.createdAt).localeCompare(String(a.updatedAt || a.createdAt)));
+    html += cases.length ? cases.map(caseHtml).join('') : '<div class="empty">No cases yet. Use “Fix this” on a debit order or subscription to start one.</div>';
+    html += '</section>';
+
+    // statements
+    const sts = S.statements.slice().sort((a, b) => String(b.periodEnd).localeCompare(String(a.periodEnd)));
+    html += '<section class="sec" aria-labelledby="h-sts"><details><summary style="cursor:pointer"><h2 id="h-sts" style="display:inline">Statements (' + sts.length + ')</h2></summary>' +
+      '<div class="statements-list" style="margin-top:10px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px 16px">' +
+      sts.map(s => '<div class="it"><span><strong>' + esc(s.bank) + (s.accountLast4 ? ' ··' + esc(s.accountLast4) : '') + '</strong> ' + esc(s.accountName || '') +
+        '<span class="sub muted small" style="display:block">' + fmtDate(s.periodStart) + ' – ' + fmtDate(s.periodEnd) + ' · ' + (s.transactions || []).length + ' transactions · ' + (s.source && s.source.type === 'gmail' ? 'from Gmail' : 'uploaded') + '</span></span>' +
+        '<button class="btn small ghost" type="button" data-action="del-statement" data-id="' + esc(s.id) + '">Remove</button></div>').join('') +
+      '</div></details>' +
+      (S.settings.lastScanAt ? '<p class="small muted">Last Gmail check ' + new Date(S.settings.lastScanAt).toLocaleString('en-ZA') + '</p>' : '') +
+      '</section>';
+
+    el.innerHTML = html;
+  }
+  function tile(v, l, alert) { return '<div class="tile"><span class="v' + (alert ? ' alert' : '') + '">' + esc(v) + '</span><span class="l">' + esc(l) + '</span></div>'; }
+
+  function cardHtml(g) {
+    return '<div class="card flagged">' +
+      '<div class="card-top"><div><h3>' + esc(g.merchant) + '</h3><span class="meta">' + esc(g.accounts.join(', ')) + ' · ' + (g.fam === 'debit' ? 'debit order' : 'card subscription') + '</span></div><span class="amt">' + money(-g.lastAmount) + '</span></div>' +
+      '<div class="chips">' + g.flags.map(f => FLAG_CHIP[f]).join('') + (g.caseOpen ? '<span class="chip green">Case open</span>' : '') + '</div>' +
+      '<p class="small">' + esc(flagText(g)) + '</p>' +
+      (g.fam === 'debit' ? '<div>' + windowText(g) + '</div>' : '') +
+      '<div class="actions"><button class="btn small primary" type="button" data-action="fix" data-key="' + esc(g.key) + '">Fix this</button>' +
+      '<button class="btn small" type="button" data-action="keep" data-key="' + esc(g.key) + '">It’s fine, keep it</button></div>' +
+      '</div>';
+  }
+
+  function tableHtml(list, isDebit) {
+    return '<div class="table-scroll"><table><thead><tr><th scope="col">Company</th><th scope="col">Account</th><th scope="col">Last taken</th><th scope="col" class="r">Amount</th><th scope="col" class="r">A year</th>' + (isDebit ? '<th scope="col">Dispute window</th>' : '') + '<th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead><tbody>' +
+      list.map(g => '<tr' + (g.stopped ? ' class="dim"' : '') + '><td><strong>' + esc(g.merchant) + '</strong><span class="sub">' +
+        (g.flags.length ? g.flags.map(f => FLAG_CHIP[f]).join(' ') + ' ' : '') + (g.stopped ? 'Not seen on your latest statement' : g.months.length + ' month' + (g.months.length === 1 ? '' : 's')) +
+        (g.decision === 'keep' ? ' · you’re keeping it' : '') + (g.caseOpen ? ' · case open' : '') + '</span></td>' +
+        '<td>' + esc(g.accounts.join(', ')) + '</td>' +
+        '<td>' + fmtDate(g.last.date) + '</td>' +
+        '<td class="r num">' + money(-g.lastAmount) + '</td>' +
+        '<td class="r num">' + (g.stopped ? '–' : moneyShort(g.yearly)) + '</td>' +
+        (isDebit ? '<td>' + windowText(g) + '</td>' : '') +
+        '<td class="r"><button class="btn small" type="button" data-action="fix" data-key="' + esc(g.key) + '">Fix this</button></td></tr>').join('') +
+      '</tbody></table></div>';
+  }
+
+  function caseHtml(c) {
+    const now = today();
+    let dl = '';
+    if (c.fam === 'debit' && c.lastDate) {
+      const left = DISPUTE_DAYS - daysBetween(parseDate(c.lastDate), now);
+      dl = left > 0 ? '<span class="deadline">Dispute with ' + esc(c.bank) + ' by ' + fmtDate(isoDay(new Date(parseDate(c.lastDate).getTime() + DISPUTE_DAYS * DAY))) + ' (' + left + ' days)</span>' : '<span class="deadline ok">Bank dispute window has closed</span>';
+    }
+    if (c.letterType === 'contract' && c.sentAt) {
+      const end = addBusinessDays(new Date(c.sentAt), 20);
+      dl += (dl ? '<br>' : '') + '<span class="deadline ok">Notice period ends ' + fmtDate(end) + '</span>';
+    }
+    const statusSel = '<label class="small muted" for="st-' + esc(c.id) + '">Status</label><select id="st-' + esc(c.id) + '" data-action="case-status" data-id="' + esc(c.id) + '">' +
+      STATUSES.map(([v, l]) => '<option value="' + v + '"' + (c.status === v ? ' selected' : '') + '>' + l + '</option>').join('') + '</select>';
+    const help = c.fam === 'debit' && BANK_HELP[c.bank] ? '<p class="small muted">' + esc(BANK_HELP[c.bank]) + '</p>' : '';
+    const done = ['resolved', 'closed'].includes(c.status);
+    return '<div class="case"' + (done ? ' style="opacity:.7"' : '') + '>' +
+      '<div style="display:flex;flex-direction:column;gap:6px"><span class="eyebrow">' + esc(labelForType(c.letterType)) + '</span><h3>' + esc(c.merchant) + ' <span class="num muted" style="font-weight:500">' + money(-c.amount) + '</span></h3>' +
+      '<span class="meta">' + esc(c.accounts || '') + ' · opened ' + fmtDate(c.createdAt ? c.createdAt.slice(0, 10) : '') + '</span>' + (dl ? '<div>' + dl + '</div>' : '') + help + '</div>' +
+      '<div class="right">' + statusSel +
+      '<div class="row">' + (c.draftUrl ? '<a class="btn small" href="' + esc(c.draftUrl) + '" target="_blank" rel="noopener">Open draft in Gmail</a>' : '') +
+      '<button class="btn small" type="button" data-action="case-letter" data-id="' + esc(c.id) + '">' + (c.draftUrl ? 'New letter' : 'Write letter') + '</button>' +
+      '<button class="btn small ghost" type="button" data-action="case-delete" data-id="' + esc(c.id) + '">Delete</button></div></div>' +
+      (c.events && c.events.length ? '<div class="events">' + c.events.slice(-5).map(e => '<span>' + esc(new Date(e.at).toLocaleDateString('en-ZA', { day: 'numeric', month: 'short' })) + ' · ' + esc(e.text) + '</span>').join('') + '</div>' : '') +
+      '</div>';
+  }
+  function labelForType(t) { const x = LETTER_TYPES.find(l => l.id === t); return x ? x.label : 'Case'; }
+
+  /* ---------------- cases & letters ---------------- */
+  function groupByKey(key) { return analyse().find(g => g.key === key) || null; }
+
+  async function createCaseFromGroup(g) {
+    const existing = S.cases.find(c => c.groupKey === g.key && !['resolved', 'closed'].includes(c.status));
+    if (existing) return existing;
+    const now = new Date().toISOString();
+    const id = safeId('c_' + Date.now().toString(36) + '_' + norm(g.merchant).slice(0, 30));
+    const c = {
+      groupKey: g.key, fam: g.fam, merchant: g.merchant, bank: g.bank, last4: g.last4 || '', accounts: g.accounts.join(', '),
+      amount: g.lastAmount, lastDate: g.last.date,
+      charges: g.charges.slice(-4).map(x => ({ date: x.date, amount: x.amount, description: x.description })),
+      letterType: defaultLetterType(g), status: 'new', createdAt: now, updatedAt: now,
+      events: [{ at: now, text: 'Case opened' }]
+    };
+    await Store.saveCase(id, c);
+    return Object.assign({ id }, c);
+  }
+  function defaultLetterType(g) {
+    if (g.flags.includes('double')) return 'double';
+    if (g.flags.includes('new') && g.fam === 'debit') return 'unauthorised';
+    return g.fam === 'debit' ? 'cancel_debit' : 'cancel_sub';
+  }
+
+  function openLetter(caseObj) {
+    S.letterFor = caseObj;
+    $('#letter-eyebrow').textContent = caseObj.merchant + ' · ' + money(-caseObj.amount);
+    $('#letter-title').textContent = 'Write a letter';
+    $('#letter-types').innerHTML = LETTER_TYPES.filter(t => caseObj.fam === 'debit' || t.id !== 'unauthorised').map(t =>
+      '<label><input type="radio" name="ltype" value="' + t.id + '"' + (t.id === caseObj.letterType ? ' checked' : '') + '><span>' + esc(t.label) + '<span class="d">' + esc(t.d) + '</span></span></label>').join('');
+    $('#letter-to').value = caseObj.to || '';
+    $('#letter-extra').value = caseObj.extra || '';
+    $('#letter-step1').hidden = false; $('#letter-step2').hidden = true;
+    $('#letter-status').textContent = '';
+    if (!S.sample) $('#letter-status').textContent = 'Claude isn’t available here, so letters can’t be written for you.';
+    $('#dlg-letter').showModal();
+  }
+
+  const LETTER_ASK = {
+    unauthorised: 'State that the sender never authorised these debits and has no agreement with the company. Instruct them to cancel any mandate immediately, stop presenting debits, and refund every amount collected (list the dates and amounts). Ask them to send a copy of any signed mandate if they claim one exists.',
+    cancel_debit: 'Instruct them to cancel the agreement and the debit order mandate with effect from the date of this letter, stop presenting further debits, and confirm the final amount owed (if any) in writing.',
+    cancel_sub: 'Cancel the subscription with immediate effect (or at the end of the current paid period), and ask for written confirmation that no further charges will be made to the sender’s card.',
+    contract: 'Give notice of cancellation of the fixed-term agreement under section 14 of the Consumer Protection Act with 20 business days’ notice from the date of this letter. Ask them to confirm the end date and itemise any reasonable cancellation penalty in writing, and to stop the debit order after the final amount.',
+    double: 'Point out that the same amount was debited twice (give the dates and amounts) and ask for the duplicate amount to be refunded within 5 business days.',
+    complaint: 'Make a formal complaint: summarise the problem with dates and amounts, what the sender has already tried, and the outcome wanted. Say that if it is not resolved within 20 business days the sender will take it to the relevant ombud.'
+  };
+
+  async function writeLetter() {
+    const c = S.letterFor; if (!c || !S.sample) return;
+    const type = (document.querySelector('input[name="ltype"]:checked') || {}).value || c.letterType;
+    const to = $('#letter-to').value.trim();
+    const extra = $('#letter-extra').value.trim();
+    const me = S.settings.me || {};
+    const facts = (c.charges || []).map(x => '- ' + x.date + ': ' + money(x.amount) + ' (' + x.description + ')').join('\n');
+    const prompt = [
+      'Write a short, polite and firm letter for a South African consumer. Reply with ONLY JSON: {"subject": string, "body": string}. The body is plain text (no markdown).',
+      'Where information is missing, leave a clear gap in square brackets for the sender to fill in, e.g. [membership number]. Do not invent facts, reference numbers or names.',
+      'Letter type: ' + labelForType(type),
+      'What to ask for: ' + LETTER_ASK[type],
+      'From: ' + (me.name || '[your name]') + (me.email ? ', ' + me.email : '') + (me.phone ? ', ' + me.phone : ''),
+      'To: ' + c.merchant + ' (customer service / cancellations)',
+      'Bank account the money came from: ' + c.bank + (c.last4 ? ' account ending ' + c.last4 : ''),
+      'Transactions:\n' + (facts || '- ' + money(-c.amount)),
+      extra ? 'Extra details from the sender: ' + extra : '',
+      'Legal points you may use ONLY where they fit this letter, stated plainly:',
+      '- Since 13 April 2026, a debit order can be disputed with the bank within 60 days.',
+      '- Consumer Protection Act section 14: a consumer may cancel a fixed-term agreement with 20 business days’ written notice; the supplier may charge only a reasonable cancellation penalty.',
+      'Do not cite any other law, regulation or court case. Keep the body under 220 words. Ask for written confirmation within 5 business days. Sign off with the sender’s name and contact details.'
+    ].filter(Boolean).join('\n');
+    const st = $('#letter-status');
+    st.textContent = 'Claude is writing your letter…';
+    const btn = document.querySelector('[data-action="letter-write"]'); if (btn) btn.disabled = true;
+    try {
+      const r = await S.sample.json(prompt, { modelTier: 'default', cache: false });
+      $('#letter-subject').value = String((r && r.subject) || ('Cancellation: ' + c.merchant));
+      $('#letter-body').value = String((r && r.body) || '');
+      $('#letter-step1').hidden = true; $('#letter-step2').hidden = false;
+      st.textContent = '';
+      await updateCase(c.id, { letterType: type, to, extra }, null);
+    } catch (e) {
+      st.textContent = sampleErrorCopy(e);
+    } finally { if (btn) btn.disabled = false; }
+  }
+
+  async function saveDraft() {
+    const c = S.letterFor; if (!c) return;
+    const st = $('#letter-status');
+    if (!S.mcp) { const [t, x] = mcpErrorCopy({ code: 'not_granted' }); st.textContent = t + ' ' + x; return; }
+    const to = $('#letter-to').value.trim();
+    const input = { subject: $('#letter-subject').value, body: $('#letter-body').value };
+    if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) input.to = [to];
+    const btn = document.querySelector('[data-action="letter-draft"]'); if (btn) btn.disabled = true;
+    st.textContent = 'Saving to your Gmail drafts…';
+    try {
+      const res = await S.mcp.callTool(GMAIL, 'create_draft', input);
+      const p = res && res.payload && typeof res.payload === 'object' ? res.payload : {};
+      const url = p.viewUrl || (p.draft && p.draft.viewUrl) || null;
+      await updateCase(c.id, { status: c.status === 'new' ? 'drafted' : c.status, draftUrl: url || c.draftUrl || null, draftId: p.id || null, to }, 'Letter saved to Gmail drafts');
+      st.innerHTML = 'Saved to your Gmail drafts. ' + (url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener">Open it in Gmail</a>, check it and press Send. Then set the case to “Letter sent”.' : 'Open Gmail drafts, check it and press Send.');
+    } catch (e) {
+      const [t, x] = mcpErrorCopy(e);
+      st.textContent = t + ' ' + x.replace(/<[^>]+>/g, '');
+    } finally { if (btn) btn.disabled = false; }
+  }
+
+  async function updateCase(id, patch, eventText) {
+    const c = S.cases.find(x => x.id === id) || (S.letterFor && S.letterFor.id === id ? S.letterFor : null);
+    if (!c) return;
+    const now = new Date().toISOString();
+    const next = Object.assign({}, c, patch, { updatedAt: now });
+    delete next.id;
+    if (eventText) next.events = (c.events || []).concat([{ at: now, text: eventText }]).slice(-30);
+    await Store.saveCase(id, next);
+    if (S.letterFor && S.letterFor.id === id) S.letterFor = Object.assign({ id }, next);
+  }
+
+  /* ---------------- settings dialog ---------------- */
+  function openSettings() {
+    $('#pw-fnb').value = S.pw.FNB || '';
+    $('#pw-capitec').value = lines(S.pw.Capitec).join('\n');
+    $('#pw-other').value = lines(S.pw.other).join('\n');
+    $('#pw-remember').checked = !!S.pwRemember;
+    const me = S.settings.me || {};
+    $('#me-name').value = me.name || '';
+    $('#me-email').value = me.email || '';
+    $('#me-phone').value = me.phone || '';
+    $('#forget-confirm').hidden = true;
+    $('#dlg-settings').showModal();
+  }
+  async function saveSettings() {
+    S.pw = { FNB: $('#pw-fnb').value.trim(), Capitec: $('#pw-capitec').value.trim(), other: $('#pw-other').value.trim() };
+    storePasswords($('#pw-remember').checked);
+    await Store.patchSettings({ me: { name: $('#me-name').value.trim(), email: $('#me-email').value.trim(), phone: $('#me-phone').value.trim() } });
+    $('#dlg-settings').close();
+    if (S.banners.pw) banner('pw', 'info', 'Passwords saved.', ' Press Check Gmail to open the locked statements.');
+  }
+
+  /* ---------------- events ---------------- */
+  document.addEventListener('click', async (ev) => {
+    const t = ev.target.closest('[data-action]');
+    if (!t) return;
+    const a = t.getAttribute('data-action');
+    if (t.tagName === 'SELECT') return;
+    try {
+      if (a === 'scan') await scanGmail();
+      else if (a === 'pick-file') $('#file-input').click();
+      else if (a === 'open-settings') openSettings();
+      else if (a === 'save-settings') await saveSettings();
+      else if (a === 'close-dialog') { const d = t.closest('dialog'); if (d) d.close(); }
+      else if (a === 'forget-all') $('#forget-confirm').hidden = false;
+      else if (a === 'forget-no') $('#forget-confirm').hidden = true;
+      else if (a === 'forget-yes') { await Store.forgetAll(); LS.del('bb.pw'); S.pw = { FNB: '', Capitec: '', other: '' }; S.pwRemember = false; $('#dlg-settings').close(); banner('pw', null); }
+      else if (a === 'keep') { const k = t.getAttribute('data-key'); await Store.patchSettings({ decisions: Object.assign({}, S.settings.decisions || {}, { [k]: 'keep' }) }); }
+      else if (a === 'fix') { const g = groupByKey(t.getAttribute('data-key')); if (!g) return; const c = await createCaseFromGroup(g); openLetter(c); }
+      else if (a === 'case-letter') { const c = S.cases.find(x => x.id === t.getAttribute('data-id')); if (c) openLetter(c); }
+      else if (a === 'case-delete') { const id = t.getAttribute('data-id'); if (t.getAttribute('data-confirm') === '1') { await Store.deleteCase(id); } else { t.setAttribute('data-confirm', '1'); t.textContent = 'Tap again to delete'; } }
+      else if (a === 'del-statement') { const id = t.getAttribute('data-id'); if (t.getAttribute('data-confirm') === '1') { await Store.deleteStatement(id); } else { t.setAttribute('data-confirm', '1'); t.textContent = 'Tap again to remove'; } }
+      else if (a === 'letter-write') await writeLetter();
+      else if (a === 'letter-back') { $('#letter-step1').hidden = false; $('#letter-step2').hidden = true; }
+      else if (a === 'letter-copy') {
+        const txt = 'Subject: ' + $('#letter-subject').value + '\n\n' + $('#letter-body').value;
+        try { await navigator.clipboard.writeText(txt); $('#letter-status').textContent = 'Copied.'; } catch (e) { $('#letter-body').select(); $('#letter-status').textContent = 'Select-all done. Copy it with your keyboard.'; }
+      }
+      else if (a === 'letter-draft') await saveDraft();
+    } catch (e) {
+      banner('action', 'err', 'That didn’t work.', ' ' + esc((e && (e.message || e.code)) || ''));
+    }
+  });
+  document.addEventListener('change', async (ev) => {
+    const t = ev.target;
+    if (t.id === 'file-input') { const files = t.files; await importFiles(files); t.value = ''; return; }
+    if (t.matches && t.matches('select[data-action="case-status"]')) {
+      const id = t.getAttribute('data-id'); const v = t.value;
+      const label = (STATUSES.find(s => s[0] === v) || [v, v])[1];
+      const patch = { status: v };
+      if (v === 'sent') { const c = S.cases.find(x => x.id === id); if (c && !c.sentAt) patch.sentAt = new Date().toISOString(); }
+      try { await updateCase(id, patch, 'Status: ' + label); } catch (e) { banner('action', 'err', 'Couldn’t update the case.', ''); }
+    }
+  });
+
+  /* ---------------- boot ---------------- */
+  async function boot() {
+    loadPasswords();
+    if (!window.claude || typeof window.claude.use !== 'function') {
+      S.ready = true;
+      banner('env', 'err', 'Open BankBuddy inside Claude.', ' This page needs Claude to read your Gmail and statements.');
+      render();
+      return;
+    }
+    const [mcp, sample] = await Promise.all([claude.use('mcp').catch(() => null), claude.use('sample').catch(() => null)]);
+    S.mcp = mcp; S.sample = sample;
+    if (!mcp) banner('gmail', 'warn', 'Gmail isn’t available in this view.', ' You can still add PDF statements by hand.');
+    if (!sample) banner('claude', 'err', 'Claude isn’t available in this view.', ' BankBuddy needs Claude to read statements.');
+    if (!pdfReady()) banner('pdf', 'err', 'The PDF reader didn’t load.', ' Reload the page to try again.');
+    await Store.init();
+    S.ready = true;
+    render();
+  }
+  boot();
+})();
+</script>
