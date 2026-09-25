@@ -486,8 +486,14 @@ dialog::backdrop{background:rgba(10,14,20,.45)}
     open(title) {
       this.lines = []; this.title = title; this.done = 0; this.total = 0;
       const el = $('#progress'); el.hidden = false;
-      el.innerHTML = '<div class="progress"><div class="progress-head"><strong id="pg-title"></strong><span class="small muted" id="pg-count"></span></div><div class="bar"><span id="pg-bar"></span></div><div class="log" id="pg-log" aria-live="polite"></div></div>';
+      el.innerHTML = '<div class="progress"><div class="progress-head"><strong id="pg-title"></strong><span class="row"><span class="small muted" id="pg-count"></span><button class="btn small" type="button" id="pg-stop" data-action="stop">Stop</button></span></div><div class="bar"><span id="pg-bar"></span></div><div class="log" id="pg-log" aria-live="polite"></div></div>';
       $('#pg-title').textContent = title;
+    },
+    // one log line that keeps updating (Claude's streaming progress)
+    live(text) {
+      const l = $('#pg-log'); if (!l) return () => {};
+      const d = document.createElement('div'); d.textContent = text; l.appendChild(d); l.scrollTop = l.scrollHeight;
+      return (t) => { d.textContent = t; };
     },
     setTotal(n) { this.total = n; this.upd(); },
     step() { this.done++; this.upd(); },
@@ -500,7 +506,7 @@ dialog::backdrop{background:rgba(10,14,20,.45)}
       const l = $('#pg-log'); if (!l) return;
       const d = document.createElement('div'); if (kind) d.className = kind; d.textContent = text; l.appendChild(d); l.scrollTop = l.scrollHeight;
     },
-    finish(title) { const t = $('#pg-title'); if (t) t.textContent = title; this.total = this.total || 1; this.done = this.total; this.upd(); }
+    finish(title) { const t = $('#pg-title'); if (t) t.textContent = title; this.total = this.total || 1; this.done = this.total; this.upd(); const s = $('#pg-stop'); if (s) s.hidden = true; }
   };
 
   /* ---------------- PDF → text ---------------- */
@@ -568,18 +574,21 @@ dialog::backdrop{background:rgba(10,14,20,.45)}
   }
 
   /* ---------------- statement → data (Claude) ---------------- */
+  // Claude returns only what BankBuddy needs (debit orders, subscription-type
+  // card charges, a fee total, balances) in a compact row format, so a busy
+  // business statement answers in seconds instead of minutes.
   const EXTRACT_RULES = [
     'You are reading a South African bank statement. The text was pulled out of the PDF, so columns are separated by " | " and some lines may be split.',
     'Reply with ONLY one JSON object, no other text, shaped like:',
-    '{"is_bank_statement": true, "bank": "FNB", "account_name": "Gold Cheque", "account_last4": "1234", "period_start": "2026-08-01", "period_end": "2026-08-31", "opening_balance": 1200.50, "closing_balance": 980.10, "transactions": [{"date": "2026-08-01", "description": "DEBIT ORDER SAFEHAVEN 0331", "amount": -189.00, "kind": "debit_order", "merchant": "SafeHaven"}]}',
+    '{"is_bank_statement":true,"bank":"Capitec","account_name":"Business Account","account_last4":"1234","period_start":"2026-08-01","period_end":"2026-08-31","opening_balance":1200.5,"closing_balance":980.1,"fees_total":85.5,"rows":[["2026-08-01",-189,"d","SafeHaven","SAFEHAVEN FNRL 0331"],["2026-08-03",-999,"s","StreamBox","STREAMBOX PREMIUM"]]}',
     'Rules:',
-    '- is_bank_statement: false if this is not a bank or credit card account statement (then leave other fields empty).',
-    '- account_last4: only the last 4 digits of the account number; never the full number.',
-    '- amount: in rands; NEGATIVE for money going out (debits, fees, purchases), POSITIVE for money coming in.',
-    '- kind: one of "debit_order" (debit orders, DebiCheck, NAEDO/AEDO, EFT debits by companies, insurance premiums, loan or contract collections), "card_subscription" (card charges to subscription services such as streaming, music, apps, software, cloud storage, memberships), "card_purchase" (other card spending), "fee" (bank fees, charges, interest charged), "transfer" (payments you made, own-account transfers, cash sent), "cash" (ATM withdrawals), "income" (salary, deposits, refunds, payments received), "other".',
-    '- merchant: the company’s plain name as a person would say it (e.g. "Discovery Life", "Netflix", "Virgin Active"), without reference numbers, dates or card numbers. For bank fees use e.g. "FNB monthly fee".',
-    '- Include every transaction line once. Do not invent anything. Dates as YYYY-MM-DD using the statement’s own years.',
-    '- Balances in rands; negative if overdrawn. Use null if not shown.'
+    '- is_bank_statement: false if this is not a bank or credit card account statement (then leave the other fields empty).',
+    '- account_last4: only the last 4 digits of the account number, never the full number.',
+    '- rows: ONLY money going out that is (d) a debit order: debit orders, DebiCheck, NAEDO/AEDO, EFT debits collected by a company, insurance premiums, loan, rental or contract collections; or (s) a card or online charge to a subscription or membership service: streaming, music, apps, software, cloud storage, memberships, gyms.',
+    '- Leave out everything else: payments the account holder made to people or suppliers, transfers, cash, ordinary card purchases at shops or restaurants, bank fees, money coming in.',
+    '- Each row: [date "YYYY-MM-DD", amount in rands as a NEGATIVE number, "d" or "s", the company’s plain name as a person would say it (e.g. "Discovery Life", "Netflix") without reference numbers, the statement text as printed (max 40 characters)].',
+    '- fees_total: the total of bank fees and charges on this statement as a positive number (0 if none).',
+    '- Balances in rands, negative if overdrawn, null if not shown. Dates use the statement’s own years. Do not invent anything.'
   ].join('\n');
 
   async function extractStatement(pages, bankHint, label) {
@@ -596,13 +605,19 @@ dialog::backdrop{background:rgba(10,14,20,.45)}
     if (cur.length) chunks.push(cur.join('\n'));
     let result = null;
     for (let i = 0; i < chunks.length; i++) {
-      const head = i === 0 ? EXTRACT_RULES : EXTRACT_RULES + '\nThis is a LATER PART of the same statement: fill "transactions" only; other fields may be null.';
+      const head = i === 0 ? EXTRACT_RULES : EXTRACT_RULES + '\nThis is a LATER PART of the same statement: fill "rows" and "fees_total" for this part only; other fields may be null.';
       const prompt = head + '\nBank (from the email sender, may be empty): ' + (bankHint || 'unknown') + '\n\nSTATEMENT TEXT:\n<<<\n' + chunks[i] + '\n>>>';
-      if (P.log && chunks.length > 1) P.log('   reading part ' + (i + 1) + ' of ' + chunks.length + '…');
-      const data = await sample.json(prompt, { modelTier: 'default', cache: { gcTime: 86400000 } });
+      const live = P.live('   Claude is reading' + (chunks.length > 1 ? ' part ' + (i + 1) + ' of ' + chunks.length : '') + '…');
+      const data = await sample.json(prompt, {
+        modelTier: 'quick', cache: { gcTime: 86400000 }, signal: S.abort ? S.abort.signal : undefined,
+        onText: ({ text }) => live('   Claude is reading' + (chunks.length > 1 ? ' part ' + (i + 1) + ' of ' + chunks.length : '') + '… ' + text.length.toLocaleString('en-ZA') + ' characters so far')
+      });
       if (!data || typeof data !== 'object') { const e = new Error('bad'); e.code = 'invalid_json'; throw e; }
       if (i === 0) result = data;
-      else if (Array.isArray(data.transactions)) result.transactions = (result.transactions || []).concat(data.transactions);
+      else {
+        if (Array.isArray(data.rows)) result.rows = (result.rows || []).concat(data.rows);
+        if (!isNaN(Number(data.fees_total))) result.fees_total = (Number(result.fees_total) || 0) + Number(data.fees_total);
+      }
     }
     if (!result) { const e = new Error('empty'); e.code = 'empty_completion'; throw e; }
     return cleanStatement(result, bankHint, label);
@@ -612,11 +627,15 @@ dialog::backdrop{background:rgba(10,14,20,.45)}
   function cleanStatement(r, bankHint, label) {
     const num = (v) => (v === null || v === undefined || v === '' || isNaN(Number(v))) ? null : Math.round(Number(v) * 100) / 100;
     const day = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : null);
-    const txs = (Array.isArray(r.transactions) ? r.transactions : []).map(t => ({
-      date: day(t.date), description: String(t.description || '').slice(0, 160),
-      amount: num(t.amount), kind: KINDS.has(t.kind) ? t.kind : 'other',
-      merchant: String(t.merchant || t.description || '').slice(0, 80)
-    })).filter(t => t.date && t.amount !== null);
+    const txs = (Array.isArray(r.rows) ? r.rows : []).map(row => {
+      const x = Array.isArray(row) ? row : [row && row.date, row && row.amount, row && row.kind, row && row.merchant, row && row.description];
+      const amt = num(x[1]);
+      return {
+        date: day(x[0]), amount: amt === null ? null : -Math.abs(amt),
+        kind: String(x[2]).toLowerCase().startsWith('s') ? 'card_subscription' : 'debit_order',
+        merchant: String(x[3] || x[4] || '').slice(0, 80), description: String(x[4] || x[3] || '').slice(0, 80)
+      };
+    }).filter(t => t.date && t.amount !== null && t.amount !== 0);
     const last4 = String(r.account_last4 || '').replace(/\D/g, '').slice(-4);
     return {
       isStatement: r.is_bank_statement !== false,
@@ -627,6 +646,7 @@ dialog::backdrop{background:rgba(10,14,20,.45)}
       periodEnd: day(r.period_end) || (txs.length ? txs[txs.length - 1].date : null),
       openingBalance: num(r.opening_balance),
       closingBalance: num(r.closing_balance),
+      feesTotal: num(r.fees_total),
       transactions: txs,
       label: label || ''
     };
@@ -634,8 +654,10 @@ dialog::backdrop{background:rgba(10,14,20,.45)}
 
   async function importPdfBytes(bytes, meta) {
     // meta: {bankHint, source:{type, messageId?, filename?, date?}, label}
+    P.log('   opening the PDF…');
     const pages = await pdfToPages(bytes, meta.bankHint);
     const text = pages.join('\n').trim();
+    P.log('   opened: ' + pages.length + ' page' + (pages.length === 1 ? '' : 's'));
     if (text.length < 40) { const e = new Error('No text in this PDF (it may be a scanned image).'); e.code = 'no_text'; throw e; }
     const st = await extractStatement(pages, meta.bankHint, meta.label);
     if (!st.isStatement) { const e = new Error('Not a bank statement'); e.code = 'not_statement'; throw e; }
@@ -643,7 +665,7 @@ dialog::backdrop{background:rgba(10,14,20,.45)}
     const doc = {
       bank: st.bank, accountName: st.accountName, accountLast4: st.accountLast4,
       periodStart: st.periodStart, periodEnd: st.periodEnd,
-      openingBalance: st.openingBalance, closingBalance: st.closingBalance,
+      openingBalance: st.openingBalance, closingBalance: st.closingBalance, feesTotal: st.feesTotal,
       transactions: st.transactions, source: meta.source || {}, importedAt: new Date().toISOString()
     };
     await Store.saveStatement(id, doc);
@@ -765,21 +787,49 @@ dialog::backdrop{background:rgba(10,14,20,.45)}
     return files;
   }
 
+  // Ask for Claude (and Gmail) up front with one dialog, so a read never sits
+  // silently waiting on a prompt the viewer hasn't seen.
+  async function ensureAllowed(names) {
+    const perm = await claude.use('permissions').catch(() => null);
+    if (!perm) return true;
+    let st = {};
+    try { st = await perm.state(); } catch (e) { return true; }
+    const pending = names.filter(n => st[n] === 'prompt');
+    let res = {};
+    if (pending.length) {
+      P.log('Waiting for you to allow ' + pending.map(n => n === 'sample' ? 'Claude' : 'Gmail').join(' and ') + ' in the Claude prompt…');
+      const onStop = new Promise((resolve) => { if (S.abort) S.abort.signal.addEventListener('abort', () => resolve(null), { once: true }); });
+      try { res = await Promise.race([perm.request(pending), onStop]); } catch (e) { res = {}; }
+      if (res === null) return false;
+    }
+    const denied = names.filter(n => (res[n] || st[n]) === 'denied');
+    if (denied.length) {
+      banner('perm', 'err', 'BankBuddy wasn’t allowed to use ' + denied.map(n => n === 'sample' ? 'Claude' : 'Gmail').join(' or ') + '.', ' Reload the page and choose Allow when asked.');
+      return false;
+    }
+    banner('perm', null);
+    return true;
+  }
+  const stopped = () => !!(S.abort && S.abort.signal.aborted);
+
   async function scanGmail() {
     if (S.busy) return;
     if (!S.mcp) { const [t, x] = mcpErrorCopy({ code: 'not_granted' }); banner('gmail', 'err', t, x); return; }
     if (!S.sample) { banner('claude', 'err', 'Claude isn’t available here.', 'BankBuddy needs Claude to read statements. Open it from your Claude artifacts.'); return; }
     S.busy = true; setBusy(true);
+    S.abort = new AbortController();
     banner('gmail', null);
     P.open('Checking Gmail for bank statements…');
     const processed = Object.assign({}, S.settings.processed || {});
     let imported = 0, needPw = 0, failed = 0;
     try {
+      if (!(await ensureAllowed(['mcp:Gmail', 'sample']))) { P.finish('Stopped'); return; }
       const msgs = await listStatementMessages();
       const todo = msgs.filter(m => processed[m.id] !== 'ok' && processed[m.id] !== 'no_pdf');
       P.log('Found ' + msgs.length + ' statement email' + (msgs.length === 1 ? '' : 's') + ', ' + todo.length + ' new or not yet read.');
       P.setTotal(todo.length);
       for (const m of todo) {
+        if (stopped()) break;
         const label = (m.bank || 'Bank') + ' · ' + (m.date ? fmtDate(m.date.slice(0, 10)) : '') + (m.subject ? ' · ' + m.subject : '');
         P.log('→ ' + label);
         try {
@@ -789,11 +839,12 @@ dialog::backdrop{background:rgba(10,14,20,.45)}
           for (const f of files) {
             const r = await importPdfBytes(f.bytes, { bankHint: m.bank, source: { type: 'gmail', messageId: m.id, filename: f.filename, date: m.date || null }, label });
             imported++;
-            P.log('   ✓ ' + r.doc.bank + ' ' + (r.doc.accountName || '') + ' ' + (r.doc.periodStart ? fmtDate(r.doc.periodStart) : '') + ' – ' + (r.doc.periodEnd ? fmtDate(r.doc.periodEnd) : '') + ' · ' + r.doc.transactions.length + ' transactions', 'ok');
+            P.log('   ✓ ' + r.doc.bank + ' ' + (r.doc.accountName || '') + ' ' + fmtDate(r.doc.periodStart) + ' – ' + fmtDate(r.doc.periodEnd) + ' · ' + foundText(r.doc), 'ok');
           }
           processed[m.id] = 'ok';
         } catch (e) {
-          if (e && e.code === 'password') { processed[m.id] = 'password'; needPw++; P.log('   locked: add the ' + (m.bank || 'statement') + ' password in Settings', 'bad'); }
+          if (e && e.code === 'cancelled') { P.log('   stopped', 'bad'); break; }
+          if (e && e.code === 'password') { processed[m.id] = 'password'; needPw++; P.log('   locked: add the ' + (m.bank === 'Capitec' ? 'Capitec account number' : (m.bank || 'statement') + ' password') + ' in Settings', 'bad'); }
           else if (e && e.code === 'not_statement') { processed[m.id] = 'ok'; P.log('   skipped: not a bank statement'); }
           else if (e && e.code && SAMPLE_FATAL.has(e.code)) { processed[m.id] = 'error'; failed++; P.log('   ' + sampleErrorCopy(e), 'bad'); P.step(); throw e; }
           else if (e && e.code && /^(needs_reauth|server_not_connected|not_in_manifest|selection_required|blocked_by_policy|approval_required|not_granted|capability_disabled)$/.test(e.code)) { throw e; }
@@ -808,7 +859,7 @@ dialog::backdrop{background:rgba(10,14,20,.45)}
         }
         P.step();
       }
-      P.finish(imported ? ('Imported ' + imported + ' statement' + (imported === 1 ? '' : 's')) : 'No new statements');
+      P.finish(stopped() ? 'Stopped' : imported ? ('Imported ' + imported + ' statement' + (imported === 1 ? '' : 's')) : 'No new statements');
     } catch (e) {
       if (e && e.code && SAMPLE_FATAL.has(e.code)) { banner('claude', 'err', 'Stopped reading statements.', esc(sampleErrorCopy(e))); P.finish('Stopped'); }
       else { const [t, x] = mcpErrorCopy(e); banner('gmail', 'err', t, x); P.finish('Stopped'); }
@@ -820,31 +871,44 @@ dialog::backdrop{background:rgba(10,14,20,.45)}
     }
   }
 
+  function foundText(doc) {
+    const n = doc.transactions.length;
+    return n + ' debit order' + (n === 1 ? '' : 's') + ' or subscription' + (n === 1 ? '' : 's');
+  }
+
   async function importFiles(fileList) {
     if (S.busy || !fileList || !fileList.length) return;
     if (!S.sample) { banner('claude', 'err', 'Claude isn’t available here.', 'BankBuddy needs Claude to read statements. Open it from your Claude artifacts.'); return; }
+    const files = Array.from(fileList);
     S.busy = true; setBusy(true);
+    S.abort = new AbortController();
     P.open('Reading your statements…');
-    P.setTotal(fileList.length);
+    P.setTotal(files.length);
     let ok = 0;
-    for (const f of Array.from(fileList)) {
-      P.log('→ ' + f.name);
-      try {
-        const bytes = new Uint8Array(await f.arrayBuffer());
-        const hint = /fnb|first ?national/i.test(f.name) ? 'FNB' : /capitec/i.test(f.name) ? 'Capitec' : '';
-        const r = await importPdfBytes(bytes, { bankHint: hint, source: { type: 'upload', filename: f.name }, label: f.name });
-        ok++;
-        P.log('   ✓ ' + r.doc.bank + ' ' + (r.doc.accountName || '') + ' · ' + r.doc.transactions.length + ' transactions', 'ok');
-      } catch (e) {
-        if (e && e.code === 'password') P.log('   locked: add the statement password in Settings and add it again', 'bad');
-        else if (e && e.code === 'not_statement') P.log('   skipped: not a bank statement', 'bad');
-        else if (e && e.code && SAMPLE_FATAL.has(e.code)) { P.log('   ' + sampleErrorCopy(e), 'bad'); banner('claude', 'err', 'Stopped reading statements.', esc(sampleErrorCopy(e))); P.step(); break; }
-        else P.log('   ' + ((e && e.code && e.code !== 'pdfjs' && e.code !== 'no_text' && e.code !== 'unreadable') ? sampleErrorCopy(e) : (e && e.message) || 'Couldn’t read this file'), 'bad');
+    try {
+      if (!(await ensureAllowed(['sample']))) { P.finish('Stopped'); return; }
+      for (const f of files) {
+        if (stopped()) break;
+        P.log('→ ' + f.name);
+        try {
+          const bytes = new Uint8Array(await f.arrayBuffer());
+          const hint = /fnb|first ?national/i.test(f.name) ? 'FNB' : /capitec/i.test(f.name) ? 'Capitec' : '';
+          const r = await importPdfBytes(bytes, { bankHint: hint, source: { type: 'upload', filename: f.name }, label: f.name });
+          ok++;
+          P.log('   ✓ ' + r.doc.bank + ' ' + (r.doc.accountName || '') + ' ' + fmtDate(r.doc.periodStart) + ' – ' + fmtDate(r.doc.periodEnd) + ' · ' + foundText(r.doc), 'ok');
+        } catch (e) {
+          if (e && e.code === 'cancelled') { P.log('   stopped', 'bad'); break; }
+          if (e && e.code === 'password') P.log('   locked: add the account number or password in Settings, then add this file again', 'bad');
+          else if (e && e.code === 'not_statement') P.log('   skipped: not a bank statement', 'bad');
+          else if (e && e.code && SAMPLE_FATAL.has(e.code)) { P.log('   ' + sampleErrorCopy(e), 'bad'); banner('claude', 'err', 'Stopped reading statements.', esc(sampleErrorCopy(e))); P.step(); break; }
+          else P.log('   ' + ((e && e.code && e.code !== 'pdfjs' && e.code !== 'no_text' && e.code !== 'unreadable') ? sampleErrorCopy(e) : (e && e.message) || 'Couldn’t read this file'), 'bad');
+        }
+        P.step();
       }
-      P.step();
+      P.finish(stopped() ? 'Stopped' : ok ? ('Imported ' + ok + ' statement' + (ok === 1 ? '' : 's')) : 'Nothing imported');
+    } finally {
+      S.busy = false; setBusy(false);
     }
-    P.finish(ok ? ('Imported ' + ok + ' statement' + (ok === 1 ? '' : 's')) : 'Nothing imported');
-    S.busy = false; setBusy(false);
   }
 
   function setBusy(b) {
@@ -971,7 +1035,7 @@ dialog::backdrop{background:rgba(10,14,20,.45)}
       if (!cur || String(s.periodEnd) > String(cur.periodEnd)) map.set(k, s);
     }
     return Array.from(map.values()).map(s => {
-      const fees = (s.transactions || []).filter(t => t.kind === 'fee' && t.amount < 0).reduce((a, t) => a + Math.abs(t.amount), 0);
+      const fees = s.feesTotal != null ? Math.abs(s.feesTotal) : (s.transactions || []).filter(t => t.kind === 'fee' && t.amount < 0).reduce((a, t) => a + Math.abs(t.amount), 0);
       return { bank: s.bank, last4: s.accountLast4, name: s.accountName, balance: s.closingBalance, asOf: s.periodEnd, fees };
     }).sort((a, b) => a.bank.localeCompare(b.bank));
   }
@@ -1065,7 +1129,7 @@ dialog::backdrop{background:rgba(10,14,20,.45)}
     html += '<section class="sec" aria-labelledby="h-sts"><details><summary style="cursor:pointer"><h2 id="h-sts" style="display:inline">Statements (' + sts.length + ')</h2></summary>' +
       '<div class="statements-list" style="margin-top:10px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px 16px">' +
       sts.map(s => '<div class="it"><span><strong>' + esc(s.bank) + (s.accountLast4 ? ' ··' + esc(s.accountLast4) : '') + '</strong> ' + esc(s.accountName || '') +
-        '<span class="sub muted small" style="display:block">' + fmtDate(s.periodStart) + ' – ' + fmtDate(s.periodEnd) + ' · ' + (s.transactions || []).length + ' transactions · ' + (s.source && s.source.type === 'gmail' ? 'from Gmail' : 'uploaded') + '</span></span>' +
+        '<span class="sub muted small" style="display:block">' + fmtDate(s.periodStart) + ' – ' + fmtDate(s.periodEnd) + ' · ' + (s.transactions || []).length + ' debit orders / subscriptions · ' + (s.source && s.source.type === 'gmail' ? 'from Gmail' : 'uploaded') + '</span></span>' +
         '<button class="btn small ghost" type="button" data-action="del-statement" data-id="' + esc(s.id) + '">Remove</button></div>').join('') +
       '</div></details>' +
       (S.settings.lastScanAt ? '<p class="small muted">Last Gmail check ' + new Date(S.settings.lastScanAt).toLocaleString('en-ZA') + '</p>' : '') +
@@ -1273,6 +1337,7 @@ dialog::backdrop{background:rgba(10,14,20,.45)}
     try {
       if (a === 'scan') await scanGmail();
       else if (a === 'pick-file') $('#file-input').click();
+      else if (a === 'stop') { if (S.abort) S.abort.abort(); t.disabled = true; t.textContent = 'Stopping…'; }
       else if (a === 'open-settings') openSettings();
       else if (a === 'save-settings') await saveSettings();
       else if (a === 'close-dialog') { const d = t.closest('dialog'); if (d) d.close(); }
