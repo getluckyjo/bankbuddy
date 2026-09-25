@@ -211,6 +211,47 @@ The figures below are the research agent's estimates. The multi-banking rates fo
 5. **Avoid:** collecting bank passwords or one-time PINs.
    - It is also a **marketing asset**: *"BankBuddy will never ask for your banking password, PIN or OTP."* In a country losing R2.4bn a year to digital banking fraud, that message sells trust.
 
+### Addendum: automatic collection from email (added 25 Sep 2026)
+
+Email is the best way to make Tier 1 automatic: statements and alerts reach BankBuddy without the user forwarding anything each month.
+
+**Recommended at launch: "smart forwarding".**
+- The user creates a filter in Gmail or Outlook.com that auto-forwards only bank, insurer and chosen merchant senders to a per-user BankBuddy inbound address.
+- Gmail sends a confirmation link to the forwarding address. BankBuddy's inbound mail system catches it and shows it to the user in the app.
+- Gmail filters can only be created in desktop web, so the setup flow must allow for that.
+- Microsoft 365 **work** accounts block external auto-forwarding by default (outbound spam policy, error 5.7.520). Steer users to a personal address for bank mail.
+- **Why it's the right start:** least privilege (nothing else leaves the inbox), and no Google or Microsoft app review.
+
+**Later: "connect your inbox" (OAuth).**
+
+| Provider | Access needed | Review and cost | Scope limits |
+|---|---|---|---|
+| **Microsoft Graph** | `Mail.Read` (and `Mail.Send`), consented by personal Outlook.com accounts | No CASA-style audit; free publisher verification | Work tenants on Microsoft's default consent policy have needed admin approval for `Mail.*` since late Oct 2025 |
+| **Gmail** | `gmail.readonly`, a **restricted** scope | Weeks-long verification plus a **yearly CASA security assessment** (roughly $540 to $8,000+ a year depending on assurance level; third-party figures) | **No per-sender or per-label permission**, so the app can technically see the whole mailbox. Google's Limited Use rules apply: no ads, no selling, no human reading without consent, no training general AI models. |
+
+- **Sending from the user's own address is much easier than reading.** `gmail.send` is only "sensitive" (OAuth verification, no CASA), and Graph has `Mail.Send`. The "letters sent from your own email" feature does not depend on read access.
+
+**Which banks email statements automatically** (from bank sites and third-party sources; check against real samples):
+
+| Bank | Emailed statements |
+|---|---|
+| Absa, FNB, Standard Bank, Nedbank | Monthly eStatements by email |
+| Capitec, Discovery Bank | Email a statement on request from the app, not automatically. Plan a monthly one-tap nudge; this matters because Capitec is the largest bank. |
+| Investec | Sends a notification rather than a PDF, but has an API |
+
+**FNB inContact** also sends email alerts, including an overnight debit-order summary. That makes it a near-real-time source.
+
+**Password-locked PDFs**
+- Most emailed SA statements are password-protected, usually derived from the ID number:
+  - **Absa, Nedbank, TymeBank:** reportedly the ID number [unverified for Absa and TymeBank].
+  - **FNB:** reportedly part-ID plus part-account number [unverified].
+  - **Standard Bank:** a user-chosen password, reportedly sent as an encrypted `.emc` file [unverified].
+- BankBuddy therefore has to ask for the ID number (or statement password) once and store it encrypted. It can't be used to log in or move money, but it is sensitive personal information under POPIA and belongs in the POPIA legal opinion.
+
+**Precedent to learn from:** Unroll.me/Slice sold e-receipt data and settled with the FTC in 2019. Edison, Cleanfox and Slice were exposed for inbox scraping in 2020. Google's restricted-scope regime (Project Strobe, 2018) came out of this. BankBuddy's email access must never be monetised, and it should say so plainly in the product.
+
+Sources: Gmail API scopes https://developers.google.com/workspace/gmail/api/auth/scopes · Restricted scope verification https://developers.google.com/identity/protocols/oauth2/production-readiness/restricted-scope-verification · Google API user data policy https://developers.google.com/terms/api-services-user-data-policy · CASA https://support.google.com/cloud/answer/13465431 · Microsoft Graph permissions https://learn.microsoft.com/en-us/graph/permissions-reference · Microsoft 365 external forwarding https://learn.microsoft.com/en-us/defender-office-365/outbound-spam-policies-external-email-forwarding · Gmail forwarding https://support.google.com/mail/answer/10957 · Absa eStatements https://www.absa.co.za/self-service/digital-banking-services/anytime-anywhere-banking-transactions/estatements/ · FNB email statements https://www.fnb.co.za/business-banking/electronic-services/email-statements.html · FNB inContact https://www.fnb.co.za/ways-to-bank/incontact.html · Nedbank statements https://personal.nedbank.co.za/bank/digital-banking/needs/manage/statements.html · Unroll.me FTC settlement https://www.hunton.com/privacy-and-information-security-law/unrollme-inc-settles-with-ftc-over-allegedly-deceptive-email-practices
+
 ---
 
 ## 7. Feasibility: doing the admin
